@@ -95,10 +95,10 @@ export class VeoService {
     if (simulateMode) {
       await new Promise(res => setTimeout(res, 2000));
       return [
-        { id: 0, type: 'Hook', script: 'Hey everyone! Check this out.', imagePrompt: 'Host holding the product with a smile', videoPrompt: 'Zoom in on product', status: 'pending' },
-        { id: 1, type: 'Feature', script: 'Look at the amazing texture.', imagePrompt: 'Close up of product detail', videoPrompt: 'Pan across the product labels', status: 'pending' },
-        { id: 2, type: 'Demo', script: 'It works perfectly in any setting.', imagePrompt: 'Product on a table', videoPrompt: 'Hand picking up product', status: 'pending' },
-        { id: 3, type: 'CTA', script: 'Get yours today!', imagePrompt: 'Host waving with product', videoPrompt: 'Final hero shot', status: 'pending' }
+        { id: 0, type: 'Hook', script: 'Hoy guys! Tingnan niyo ito, napaka-amazing talaga!', imagePrompt: 'Filipino host holding the product with a smile', videoPrompt: 'Zoom in on product', status: 'pending' },
+        { id: 1, type: 'Feature', script: 'Tingnan niyo naman ang napakagandang texture at detalye nito.', imagePrompt: 'Close up of product detail', videoPrompt: 'Pan across the product labels', status: 'pending' },
+        { id: 2, type: 'Demo', script: 'Napakadaling gamitin nito kahit saan, swak na swak sa araw-araw.', imagePrompt: 'Product on a table', videoPrompt: 'Hand picking up product', status: 'pending' },
+        { id: 3, type: 'CTA', script: 'Bumili na kayo ng sa inyo ngayon din! I-click ang link sa ibaba!', imagePrompt: 'Filipino host waving with product', videoPrompt: 'Final hero shot', status: 'pending' }
       ];
     }
 
@@ -114,11 +114,15 @@ export class VeoService {
               text: `You are a world-class TikTok UGC director. Analyze this product image and create a 4-part viral ad script. 
             Vibe: ${vibe}.
             
+            CRITICAL LANGUAGE REQUIREMENT:
+            The script MUST be generated entirely in the Tagalog (Filipino / Taglish) language. The person in the video is speaking Tagalog. Under no circumstances should the scripts be in English.
+            The script field in the JSON output must be strictly in Tagalog language.
+            
             Requirements:
-            1. Hook: Catchy opener speaking directly to camera.
-            2. Feature: Demonstrating a key visual aspect of the product.
-            3. Demo: Natural usage in a handheld "day in the life" style.
-            4. CTA: Friendly sign-off.
+            1. Hook: Catchy opener speaking directly to camera in Tagalog.
+            2. Feature: Demonstrating a key visual aspect of the product, speaking in Tagalog.
+            3. Demo: Natural usage in a handheld "day in the life" style, speaking in Tagalog.
+            4. CTA: Friendly sign-off in Tagalog.
             
             Output ONLY a valid JSON array of 4 objects with: type, script, imagePrompt, videoPrompt.
             Do not include markdown formatting or extra text.` },
@@ -208,7 +212,7 @@ export class VeoService {
       return "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"; // Sample public video
     }
 
-    const finalPrompt = `Tiktok style UGC video. The person is speaking directly to her handheld smartphone camera. ${shot.videoPrompt}. Authentic handheld jitters, realistic skin movement, natural daylight, no artificial filters, shot like a vlog. The person looks genuinely at the lens.`;
+    const finalPrompt = `Tiktok style UGC video. The Filipino person is speaking in Tagalog directly to her handheld smartphone camera. ${shot.videoPrompt}. Authentic handheld jitters, realistic skin movement, natural daylight, no artificial filters, shot like a vlog. The person looks genuinely at the lens.`;
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
     const ai = new GoogleGenAI({ apiKey });
