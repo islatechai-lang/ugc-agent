@@ -40,7 +40,7 @@ const App: React.FC = () => {
     const [shots, setShots] = useState<Shot[]>([]);
     const [currentShotId, setCurrentShotId] = useState<number | null>(null);
     const [masterVideoUrl, setMasterVideoUrl] = useState<string | null>(null);
-    const [selectedTemplate, setSelectedTemplate] = useState('/templates/template1.png');
+    const [selectedTemplate, setSelectedTemplate] = useState('/templates/template1.png?v=2');
     const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
 
     const ffmpegRef = useRef<any>(null);
@@ -799,7 +799,7 @@ const App: React.FC = () => {
                                 </label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 relative">
                                     {[1, 2, 3, 4, 5, 6].map((num) => {
-                                        const path = `/templates/template${num}.png`;
+                                        const path = `/templates/template${num}.png?v=2`;
                                         return (
                                             <button
                                                 key={num}
