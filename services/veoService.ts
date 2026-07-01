@@ -98,7 +98,7 @@ export class VeoService {
         { id: 0, type: 'Hook', script: 'Hoy guys! Tingnan niyo ito, napaka-amazing talaga!', imagePrompt: 'Filipino host holding the product with a smile', videoPrompt: 'Zoom in on product', status: 'pending' },
         { id: 1, type: 'Feature', script: 'Tingnan niyo naman ang napakagandang texture at detalye nito.', imagePrompt: 'Close up of product detail', videoPrompt: 'Pan across the product labels', status: 'pending' },
         { id: 2, type: 'Demo', script: 'Napakadaling gamitin nito kahit saan, swak na swak sa araw-araw.', imagePrompt: 'Product on a table', videoPrompt: 'Hand picking up product', status: 'pending' },
-        { id: 3, type: 'CTA', script: 'Bumili na kayo ng sa inyo ngayon din! I-click ang link sa ibaba!', imagePrompt: 'Filipino host waving with product', videoPrompt: 'Final hero shot', status: 'pending' }
+        { id: 3, type: 'CTA', script: 'Kaya ano pang hinihintay niyo? I-click ang yellow basket sa ibaba at bumili na ngayon!', imagePrompt: 'Filipino host waving with product', videoPrompt: 'Final hero shot', status: 'pending' }
       ];
     }
 
@@ -122,7 +122,7 @@ export class VeoService {
             1. Hook: Catchy opener speaking directly to camera in Tagalog.
             2. Feature: Demonstrating a key visual aspect of the product, speaking in Tagalog.
             3. Demo: Natural usage in a handheld "day in the life" style, speaking in Tagalog.
-            4. CTA: Friendly sign-off in Tagalog.
+            4. CTA: Friendly sign-off in Tagalog, specifically instructing the viewer to click the "yellow basket" (yellow basket / dilaw na basket / yellow cart) to purchase the product (common TikTok affiliate style).
             
             Output ONLY a valid JSON array of 4 objects with: type, script, imagePrompt, videoPrompt.
             Do not include markdown formatting or extra text.` },
