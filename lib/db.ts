@@ -16,7 +16,7 @@ export const initDb = async () => {
       username TEXT,
       profile_pic_url TEXT,
       phone TEXT UNIQUE,
-      credits INTEGER DEFAULT 1,
+      credits INTEGER DEFAULT 100,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -32,7 +32,7 @@ export const initDb = async () => {
     await db.execute(`ALTER TABLE users ADD COLUMN phone TEXT`);
   } catch (e) { /* Column likely already exists */ }
   try {
-    await db.execute(`ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 1`);
+    await db.execute(`ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 100`);
   } catch (e) { /* Column likely already exists */ }
 
   // GCash Payments table for manual & AI-reviewed receipt submissions

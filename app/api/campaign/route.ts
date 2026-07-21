@@ -22,26 +22,28 @@ export async function POST(req: Request) {
 
         if (action === 'createCampaign') {
             // Check credits
+            const creditCost = data.creditCost || 100; // 100 for 15s, 200 for 30s
+
             const user = await db.execute({
                 sql: "SELECT credits FROM users WHERE id = ?",
                 args: [userId]
             });
 
-            if (user.rows.length === 0 || (user.rows[0].credits as number) <= 0) {
-                return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+            if (user.rows.length === 0 || (user.rows[0].credits as number) < creditCost) {
+                return NextResponse.json({ error: 'Insufficient credits. You need ' + creditCost + ' credits for this video.' }, { status: 402 });
             }
 
-            // Deduct credit
+            // Deduct credits based on duration
             await db.execute({
-                sql: "UPDATE users SET credits = credits - 1 WHERE id = ?",
-                args: [userId]
+                sql: "UPDATE users SET credits = credits - ? WHERE id = ?",
+                args: [creditCost, userId]
             });
 
             await db.execute({
                 sql: 'INSERT INTO campaigns (id, user_id, vibe, status) VALUES (?, ?, ?, ?)',
                 args: [campaignId, userId, data.vibe, 'pending']
             });
-            return NextResponse.json({ success: true, newCredits: (user.rows[0].credits as number) - 1 });
+            return NextResponse.json({ success: true, newCredits: (user.rows[0].credits as number) - creditCost });
         }
 
         if (action === 'getCampaigns') {

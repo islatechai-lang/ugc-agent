@@ -5,10 +5,10 @@ import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 import { GoogleGenAI } from '@google/genai';
 
 const PACKAGES: Record<string, { credits: number; pricePhp: number; label: string }> = {
-    pack_3: { credits: 3, pricePhp: 150, label: 'Starter (3 Credits)' },
-    pack_5: { credits: 5, pricePhp: 250, label: 'Standard (5 Credits)' },
-    pack_12: { credits: 12, pricePhp: 500, label: 'Pro (12 Credits)' },
-    pack_18: { credits: 18, pricePhp: 750, label: 'Agency (18 Credits)' },
+    pack_300: { credits: 300, pricePhp: 150, label: 'Starter (300 Credits)' },
+    pack_500: { credits: 500, pricePhp: 250, label: 'Standard (500 Credits)' },
+    pack_1200: { credits: 1200, pricePhp: 500, label: 'Pro (1,200 Credits)' },
+    pack_1800: { credits: 1800, pricePhp: 750, label: 'Agency (1,800 Credits)' },
 };
 
 export async function POST(req: Request) {

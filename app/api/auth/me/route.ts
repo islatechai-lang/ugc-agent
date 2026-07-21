@@ -34,7 +34,7 @@ export async function GET() {
         if (existingUser.rows.length === 0) {
             // New user, insert with 1 free credit
             await db.execute({
-                sql: "INSERT INTO users (id, username, profile_pic_url, phone, credits) VALUES (?, ?, ?, ?, 1)",
+                sql: "INSERT INTO users (id, username, profile_pic_url, phone, credits) VALUES (?, ?, ?, ?, 100)",
                 args: [userId, username, profilePicUrl, phone]
             });
         } else {
