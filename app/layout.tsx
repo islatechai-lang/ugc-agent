@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { WhopApp } from '@whop/react/components';
+import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata: Metadata = {
-    title: 'VlogStudio - Handheld Engine',
-    description: 'Generate authentic social ads shot-by-shot with AI',
+    title: 'UGC Producer Agent - Tagalog UGC Video Generator',
+    description: 'Generate viral TikTok UGC ads in Tagalog shot-by-shot with AI',
 };
 
 export default function RootLayout({
@@ -14,13 +14,10 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <head>
-                <meta httpEquiv="Content-Security-Policy" content="frame-src 'self' https://whop.com https://*.whop.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://whop.com https://*.whop.com;" />
-            </head>
             <body>
-                <WhopApp appearance="inherit">
+                <AuthProvider>
                     {children}
-                </WhopApp>
+                </AuthProvider>
             </body>
         </html>
     );

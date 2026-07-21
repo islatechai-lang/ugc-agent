@@ -1,7 +1,0 @@
-{
-  "name": "Veo Animate Dashboard",
-  "description": "A professional dashboard for testing Google's Veo Image-to-Video generation API with real-time feedback and simulation capabilities.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

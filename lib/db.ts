@@ -1,4 +1,3 @@
-
 import { createClient } from "@libsql/client";
 
 const url = process.env.TURSO_DATABASE_URL!;
@@ -16,6 +15,7 @@ export const initDb = async () => {
       id TEXT PRIMARY KEY,
       username TEXT,
       profile_pic_url TEXT,
+      phone TEXT UNIQUE,
       credits INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -29,10 +29,31 @@ export const initDb = async () => {
     await db.execute(`ALTER TABLE users ADD COLUMN profile_pic_url TEXT`);
   } catch (e) { /* Column likely already exists */ }
   try {
+    await db.execute(`ALTER TABLE users ADD COLUMN phone TEXT`);
+  } catch (e) { /* Column likely already exists */ }
+  try {
     await db.execute(`ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 1`);
   } catch (e) { /* Column likely already exists */ }
 
-  // Updated Campaigns table
+  // GCash Payments table for manual & AI-reviewed receipt submissions
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS gcash_payments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      package_id TEXT,
+      credits INTEGER,
+      amount_php REAL,
+      receipt_url TEXT,
+      status TEXT DEFAULT 'pending',
+      ai_decision TEXT,
+      ai_reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+  `);
+
+  // Campaigns table
   await db.execute(`
     CREATE TABLE IF NOT EXISTS campaigns (
       id TEXT PRIMARY KEY,
@@ -45,7 +66,6 @@ export const initDb = async () => {
     )
   `);
 
-  // Ensure columns exist for existing campaigns table
   try {
     await db.execute(`ALTER TABLE campaigns ADD COLUMN user_id TEXT`);
   } catch (e) { /* Column likely already exists */ }

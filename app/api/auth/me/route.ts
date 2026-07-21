@@ -1,37 +1,31 @@
-
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { whop } from "@/lib/whop";
+import { verifyFirebaseIdToken } from "@/lib/firebase-admin";
 import { db, initDb } from "@/lib/db";
 
 export async function GET() {
     try {
-        // Auto-initialize DB if needed
         await initDb();
-
         const head = await headers();
-        const { userId } = await whop.verifyUserToken(head);
-
-        if (!userId) {
-            console.error("!!! WHOP AUTH ERROR: No userId found in token !!!");
+        const authHeader = head.get('authorization') || head.get('x-firebase-token');
+        
+        if (!authHeader) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const user = await whop.users.retrieve(userId);
+        const decodedToken = await verifyFirebaseIdToken(authHeader);
+        if (!decodedToken || !decodedToken.uid) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        // Defensive mapping for profile picture
-        const profilePicUrl =
-            (user as any).profile_picture?.url ||
-            (user as any).profile_pic_url ||
-            (user as any).avatar_url ||
-            (user as any).image_url;
-
-        // DB SYNC & UPSERT
-        const username = user.username || user.name || "Creator";
+        const userId = decodedToken.uid;
+        const username = decodedToken.name || decodedToken.phone_number || decodedToken.email?.split('@')[0] || "Creator";
+        const profilePicUrl = decodedToken.picture || "";
+        const phone = decodedToken.phone_number || "";
 
         // Check if user exists
         const existingUser = await db.execute({
-            sql: "SELECT credits FROM users WHERE id = ?",
+            sql: "SELECT credits, phone FROM users WHERE id = ?",
             args: [userId]
         });
 
@@ -40,27 +34,27 @@ export async function GET() {
         if (existingUser.rows.length === 0) {
             // New user, insert with 1 free credit
             await db.execute({
-                sql: "INSERT INTO users (id, username, profile_pic_url, credits) VALUES (?, ?, ?, 1)",
-                args: [userId, username, profilePicUrl]
+                sql: "INSERT INTO users (id, username, profile_pic_url, phone, credits) VALUES (?, ?, ?, ?, 1)",
+                args: [userId, username, profilePicUrl, phone]
             });
-            console.error(`!!! DB: Created new user ${userId} with 1 free credit !!!`);
         } else {
-            // Existing user, update profile info (but keep credits)
+            // Existing user, update profile info (keep credits)
             await db.execute({
-                sql: "UPDATE users SET username = ?, profile_pic_url = ? WHERE id = ?",
-                args: [username, profilePicUrl, userId]
+                sql: "UPDATE users SET username = ?, profile_pic_url = ?, phone = ? WHERE id = ?",
+                args: [username, profilePicUrl, phone, userId]
             });
             credits = existingUser.rows[0].credits as number;
         }
 
         return NextResponse.json({
-            id: user.id,
+            id: userId,
             username: username,
             profile_pic_url: profilePicUrl,
+            phone: phone,
             credits: credits
         });
     } catch (error: any) {
-        console.error("!!! CRITICAL WHOP AUTH ERROR:", error.message || error, "!!!");
+        console.error("Auth Me API Error:", error.message || error);
         return NextResponse.json({ error: "Unauthorized", message: error.message }, { status: 401 });
     }
 }

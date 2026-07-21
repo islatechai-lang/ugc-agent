@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { headers } from "next/headers";
-import { whop } from "@/lib/whop";
+import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
     try {
         const head = await headers();
-        const { userId } = await whop.verifyUserToken(head);
+        const authHeader = head.get('authorization') || head.get('x-firebase-token');
+        
+        if (!authHeader) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        if (!userId) {
+        const decoded = await verifyFirebaseIdToken(authHeader);
+        if (!decoded || !decoded.uid) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -123,9 +128,7 @@ export async function POST(req: Request) {
 
         let render = await response.json();
 
-        // 2. Simple Polling Loop (Short Wait)
-        // Since we are in a serverless route, we should be careful with long waits.
-        // We'll poll for 55 seconds max before returning the ID for frontend to take over.
+        // 5. Polling Loop
         const start = Date.now();
         while (render.status !== 'succeeded' && render.status !== 'failed' && (Date.now() - start) < 55000) {
             await new Promise(res => setTimeout(res, 3000));

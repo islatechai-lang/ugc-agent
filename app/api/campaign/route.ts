@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { headers } from "next/headers";
-import { whop } from "@/lib/whop";
+import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
     try {
         const head = await headers();
-        const { userId } = await whop.verifyUserToken(head);
-
-        if (!userId) {
+        const authHeader = head.get('authorization') || head.get('x-firebase-token');
+        
+        if (!authHeader) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const decoded = await verifyFirebaseIdToken(authHeader);
+        if (!decoded || !decoded.uid) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = decoded.uid;
 
         const { action, campaignId, data } = await req.json();
 
