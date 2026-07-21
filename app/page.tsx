@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight } from 'lucide-react';
+import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight, UserPlus } from 'lucide-react';
 import { AdVibe, AspectRatio, Config, GenerationStatus } from '../types';
 import { VeoService, Shot } from '../services/veoService';
 import { CustomVideoPlayer } from './components/CustomVideoPlayer';
@@ -46,6 +46,7 @@ const App: React.FC = () => {
     const [vibe, setVibe] = useState<AdVibe>(AdVibe.EXCITED_UNBOXING);
     const [productImage, setProductImage] = useState<string | null>(null);
     const [avatarImage, setAvatarImage] = useState<string | null>(null);
+    const [customAvatar, setCustomAvatar] = useState<string | null>(null);
     const [status, setStatus] = useState<GenerationStatus>({ stage: 'idle', message: '' });
     const [hasKey, setHasKey] = useState(false);
     const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -90,6 +91,11 @@ const App: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
+        if (selectedTemplate === 'custom' && customAvatar) {
+            setAvatarImage(customAvatar);
+            return;
+        }
+
         const loadAvatar = async (path: string) => {
             try {
                 const response = await fetch(path);
@@ -102,8 +108,11 @@ const App: React.FC = () => {
             } catch (e) { console.warn("Avatar not found:", path); }
         };
         loadAvatar(selectedTemplate);
+    }, [selectedTemplate, customAvatar]);
+
+    useEffect(() => {
         loadFFmpeg();
-    }, [selectedTemplate]);
+    }, []);
 
     const loadFFmpeg = async () => {
         const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
@@ -241,7 +250,7 @@ const App: React.FC = () => {
     // Step 1: Generate Script (Preview before video generation)
     const handleGenerateScript = async () => {
         if (!productImage || !avatarImage) {
-            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image.' });
+            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image at host template.' });
             return;
         }
 
@@ -490,7 +499,6 @@ const App: React.FC = () => {
                                     <Phone className="w-3 h-3 text-orange-400" /> Enter Mobile Number
                                 </label>
 
-                                {/* Fixed Clean Phone Input without weird border styling */}
                                 <div className="flex items-stretch bg-black/50 border border-white/15 rounded-xl overflow-hidden focus-within:border-orange-500 transition-colors shadow-inner">
                                     <div className="px-3.5 flex items-center justify-center text-xs font-black text-orange-400 bg-white/5 border-r border-white/10 shrink-0">
                                         🇵🇭 +63
@@ -553,13 +561,13 @@ const App: React.FC = () => {
     // ===================== MAIN APP =====================
     return (
         <div className="flex h-[100dvh] bg-[#09090b] text-white font-sans overflow-hidden relative">
-            {/* Overlay for sidebar */}
+            {/* Overlay for sidebar when open */}
             {isSidebarOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsSidebarOpen(false)} />
             )}
 
-            {/* Sidebar */}
-            <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-[#0f0f12] border-r border-white/[0.06] flex flex-col p-4 sm:p-5 overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            {/* Sidebar (Collapsible on BOTH desktop and mobile) */}
+            <aside className={`fixed inset-y-0 left-0 z-50 w-72 sm:w-80 bg-[#0f0f12] border-r border-white/[0.06] flex flex-col p-4 sm:p-5 overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/30">
@@ -625,35 +633,21 @@ const App: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto relative">
-                {/* Top Navigation Bar with Burger Toggle on both Mobile and Desktop */}
+                {/* Clean Top Bar: Burger menu toggle on left, credits + Top Up on right */}
                 <div className="sticky top-0 z-30 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {/* Always visible burger icon so desktop and mobile can toggle sidebar anytime */}
-                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white/60 hover:text-orange-500 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
-                            <Menu className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
-                                <Clapperboard className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xs font-black tracking-tight leading-none text-orange-500">Pinoy UGC Agent</h1>
-                                <span className="text-[8px] text-white/40 font-bold uppercase tracking-[0.15em]">Tagalog Studio</span>
-                            </div>
-                        </div>
-                    </div>
+                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white/60 hover:text-orange-500 bg-white/5 hover:bg-white/10 rounded-xl transition-all flex items-center gap-2 text-xs font-bold">
+                        <Menu className="w-5 h-5" />
+                        <span className="hidden sm:inline">Menu</span>
+                    </button>
 
                     {user && (
                         <div className="flex items-center gap-2">
-                            <div className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full flex items-center gap-1.5">
-                                <Zap className="w-3 h-3 text-orange-500 fill-orange-500" />
-                                <span className="text-[10px] font-black">{user.credits} Credits</span>
+                            <div className="px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full flex items-center gap-1.5">
+                                <Zap className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+                                <span className="text-xs font-black">{user.credits} Credits</span>
                             </div>
-                            <button onClick={() => setShowPaymentModal(true)} className="px-3 py-1 bg-orange-600 hover:bg-orange-500 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-orange-600/20 transition-all active:scale-95">
-                                <Plus className="w-2.5 h-2.5" /> Top Up
-                            </button>
-                            <button onClick={logout} className="p-1.5 text-white/40 hover:text-red-400 transition-colors" title="Sign Out">
-                                <LogOut className="w-4 h-4" />
+                            <button onClick={() => setShowPaymentModal(true)} className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-500 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-orange-600/20 transition-all active:scale-95">
+                                <Plus className="w-3 h-3" /> Top Up
                             </button>
                         </div>
                     )}
@@ -707,13 +701,18 @@ const App: React.FC = () => {
                                     </section>
                                 </div>
 
-                                {/* Step 3: Template */}
+                                {/* Step 3: Template + Custom Avatar Upload */}
                                 <section className="space-y-2.5">
-                                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
-                                        <span className="w-4 h-4 bg-orange-600 rounded text-white flex items-center justify-center text-[8px] font-black">3</span>
-                                        Host Template
-                                    </label>
-                                    <div className="grid grid-cols-6 gap-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                                            <span className="w-4 h-4 bg-orange-600 rounded text-white flex items-center justify-center text-[8px] font-black">3</span>
+                                            Host Template
+                                        </label>
+                                        <span className="text-[9px] text-white/40 font-bold">Pumili ng Preset o Mag-upload ng Sariling Host</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-7 gap-1.5">
+                                        {/* Presets 1 to 6 */}
                                         {[1, 2, 3, 4, 5, 6].map((num) => {
                                             const path = `/templates/template${num}.png?v=2`;
                                             return (
@@ -723,6 +722,30 @@ const App: React.FC = () => {
                                                 </button>
                                             );
                                         })}
+
+                                        {/* Custom Host Upload Tile */}
+                                        <label className={`aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-90 relative overflow-hidden ${selectedTemplate === 'custom' ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-500/20' : 'border-white/20 bg-white/5 hover:border-orange-500/40'}`}>
+                                            {customAvatar ? (
+                                                <img src={customAvatar} className="w-full h-full object-cover" alt="Custom Host" />
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1 text-center p-1 opacity-70">
+                                                    <UserPlus className="w-4 h-4 text-orange-400" />
+                                                    <span className="text-[7px] font-black uppercase tracking-widest text-orange-300">Custom</span>
+                                                </div>
+                                            )}
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const r = new FileReader();
+                                                    r.onload = () => {
+                                                        const res = r.result as string;
+                                                        setCustomAvatar(res);
+                                                        setSelectedTemplate('custom');
+                                                    };
+                                                    r.readAsDataURL(file);
+                                                }
+                                            }} />
+                                        </label>
                                     </div>
                                 </section>
 
