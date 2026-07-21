@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Shield, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight } from 'lucide-react';
+import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight } from 'lucide-react';
 import { AdVibe, AspectRatio, Config, GenerationStatus } from '../types';
 import { VeoService, Shot } from '../services/veoService';
 import { CustomVideoPlayer } from './components/CustomVideoPlayer';
@@ -10,7 +10,6 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { useAuth } from '@/components/AuthProvider';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import Link from 'next/link';
 
 declare global {
     var aistudio: {
@@ -88,7 +87,7 @@ const App: React.FC = () => {
     const [showQuotaModal, setShowQuotaModal] = useState(false);
     const [quotaMessage, setQuotaMessage] = useState('');
     const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
         const loadAvatar = async (path: string) => {
@@ -165,7 +164,12 @@ const App: React.FC = () => {
             const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier!);
             setConfirmationResult(confirmation);
         } catch (e: any) {
-            setPhoneError(e.message || "Hindi naipadala ang OTP. I-check ang phone number.");
+            console.error("Phone Auth Error:", e);
+            if (e.code === 'auth/operation-not-allowed') {
+                setPhoneError("SMS is disabled for this region in Firebase Console. Please enable Philippines (+63) in Firebase > Auth > Settings > Phone SMS Region Policy.");
+            } else {
+                setPhoneError(e.message || "Hindi naipadala ang OTP. Subukan ulit.");
+            }
         } finally {
             setVerifyingPhone(false);
         }
@@ -439,15 +443,23 @@ const App: React.FC = () => {
 
     const durationConfig = DURATIONS.find(d => d.id === selectedDuration)!;
 
-    // ===================== LOADING SCREEN =====================
+    // ===================== LOADING SCREEN (TEXT ABOVE LOGO) =====================
     if (authLoading) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-[#09090b] text-orange-500 gap-4">
-                <div className="w-16 h-16 bg-orange-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-600/40 animate-pulse">
-                    <Clapperboard className="w-8 h-8 text-white" />
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-6 gap-6">
+                <div className="text-center space-y-1 animate-fade-in">
+                    <h1 className="text-2xl sm:text-3xl font-black italic uppercase tracking-wider text-orange-500">PINOY UGC AGENT</h1>
+                    <p className="text-[10px] text-white/40 uppercase tracking-[0.25em] font-bold">Tagalog AI Video Studio</p>
                 </div>
-                <Loader2 className="w-8 h-8 animate-spin" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.3em]">Pinoy UGC Agent</span>
+
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-600/40 animate-pulse">
+                    <Clapperboard className="w-10 h-10 text-white" />
+                </div>
+
+                <div className="flex items-center gap-2 text-xs font-bold text-white/50 pt-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
+                    <span>Inihahanda ang Studio...</span>
+                </div>
             </div>
         );
     }
@@ -460,38 +472,45 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-600/15 via-transparent to-transparent pointer-events-none" />
 
                 <div className="w-full max-w-sm bg-white/[0.03] border border-white/10 rounded-[28px] p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative z-10 space-y-6 text-center">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tight text-orange-500">PINOY UGC AGENT</h1>
+                        <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-bold">Tagalog AI Video Studio</p>
+                    </div>
+
                     <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-orange-600/40">
                         <Clapperboard className="w-8 h-8 text-white" />
                     </div>
 
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tight">Pinoy UGC Agent</h1>
-                        <p className="text-[11px] text-white/50 mt-2 leading-relaxed">Gumawa ng viral TikTok UGC ads sa Tagalog gamit ang AI. Libre ang 100 credits sa pag-register!</p>
-                    </div>
+                    <p className="text-[11px] text-white/60 leading-relaxed">Gumawa ng viral TikTok UGC ads sa Tagalog gamit ang AI. Libre ang 100 credits sa pag-register!</p>
 
                     <div className="space-y-4 pt-2 text-left">
                         {!confirmationResult ? (
                             <div className="space-y-3">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1.5">
-                                    <Phone className="w-3 h-3" /> Phone Number
+                                    <Phone className="w-3 h-3 text-orange-400" /> Enter Mobile Number
                                 </label>
-                                <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden focus-within:border-orange-500/50 transition-all">
-                                    <span className="px-3 text-sm text-white/50 font-bold border-r border-white/10 bg-white/5">+63</span>
+
+                                {/* Fixed Clean Phone Input without weird border styling */}
+                                <div className="flex items-stretch bg-black/50 border border-white/15 rounded-xl overflow-hidden focus-within:border-orange-500 transition-colors shadow-inner">
+                                    <div className="px-3.5 flex items-center justify-center text-xs font-black text-orange-400 bg-white/5 border-r border-white/10 shrink-0">
+                                        🇵🇭 +63
+                                    </div>
                                     <input
                                         type="tel"
                                         placeholder="9XX XXX XXXX"
                                         value={phoneNumber}
                                         onChange={(e) => setPhoneNumber(e.target.value)}
-                                        className="flex-1 bg-transparent px-3 py-3.5 text-sm focus:outline-none text-white placeholder:text-white/20"
+                                        className="flex-1 bg-transparent px-3 py-3.5 text-sm font-medium focus:outline-none text-white placeholder:text-white/20"
                                     />
                                 </div>
+
                                 <button
                                     onClick={handleSendOtp}
                                     disabled={verifyingPhone}
                                     className="w-full py-3.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 font-black rounded-xl text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98]"
                                 >
                                     {verifyingPhone ? <Loader2 className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
-                                    {verifyingPhone ? 'Sending...' : 'Send OTP Code'}
+                                    {verifyingPhone ? 'Sending OTP...' : 'Send SMS OTP'}
                                 </button>
                             </div>
                         ) : (
@@ -506,7 +525,7 @@ const App: React.FC = () => {
                                     value={otpCode}
                                     onChange={(e) => setOtpCode(e.target.value)}
                                     maxLength={6}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-lg text-center tracking-[0.5em] font-mono focus:outline-none focus:border-orange-500/50"
+                                    className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-3.5 text-lg text-center tracking-[0.5em] font-mono focus:outline-none focus:border-orange-500"
                                 />
                                 <button
                                     onClick={handleVerifyOtp}
@@ -516,18 +535,16 @@ const App: React.FC = () => {
                                     {verifyingPhone ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                     {verifyingPhone ? 'Verifying...' : 'Verify & Sign In'}
                                 </button>
-                                <button onClick={() => { setConfirmationResult(null); setOtpCode(''); }} className="w-full text-[11px] text-white/30 hover:text-white/60 pt-1">
-                                    ← Ibang number
+                                <button onClick={() => { setConfirmationResult(null); setOtpCode(''); }} className="w-full text-[11px] text-white/40 hover:text-white pt-1 text-center">
+                                    ← Change Phone Number
                                 </button>
                             </div>
                         )}
 
                         {phoneError && (
-                            <p className="text-[11px] text-red-400 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">{phoneError}</p>
+                            <p className="text-[11px] text-red-400 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 leading-relaxed">{phoneError}</p>
                         )}
                     </div>
-
-                    <p className="text-[9px] text-white/20 pt-2">Sa pag-register, sumasang-ayon ka sa terms of service.</p>
                 </div>
             </div>
         );
@@ -536,23 +553,24 @@ const App: React.FC = () => {
     // ===================== MAIN APP =====================
     return (
         <div className="flex h-[100dvh] bg-[#09090b] text-white font-sans overflow-hidden relative">
+            {/* Overlay for sidebar */}
             {isSidebarOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
             )}
 
             {/* Sidebar */}
-            <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-[#0f0f12] border-r border-white/[0.06] flex flex-col p-4 sm:p-5 overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'}`}>
+            <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-[#0f0f12] border-r border-white/[0.06] flex flex-col p-4 sm:p-5 overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/30">
                             <Clapperboard className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black tracking-tight">Pinoy UGC Agent</h1>
-                            <span className="text-[9px] text-orange-400 font-bold uppercase tracking-[0.15em]">Tagalog AI Studio</span>
+                            <h1 className="text-sm font-black tracking-tight text-orange-500">Pinoy UGC Agent</h1>
+                            <span className="text-[9px] text-white/40 font-bold uppercase tracking-[0.15em]">Tagalog AI Studio</span>
                         </div>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/40 hover:text-white p-1">
+                    <button onClick={() => setIsSidebarOpen(false)} className="text-white/40 hover:text-white p-1">
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                 </div>
@@ -574,14 +592,9 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => setShowPaymentModal(true)} className="py-2 bg-orange-600 hover:bg-orange-500 rounded-lg flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95">
-                                <Plus className="w-3 h-3" /> Top Up
-                            </button>
-                            <Link href="/admin" className="py-2 bg-white/[0.06] hover:bg-white/10 border border-white/[0.06] rounded-lg flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/70 transition-all">
-                                <Shield className="w-3 h-3 text-orange-400" /> Admin
-                            </Link>
-                        </div>
+                        <button onClick={() => setShowPaymentModal(true)} className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-orange-600/20">
+                            <Plus className="w-3.5 h-3.5" /> Top Up Credits
+                        </button>
                     </div>
                 )}
 
@@ -605,37 +618,42 @@ const App: React.FC = () => {
                     )}
                 </div>
 
-                <button onClick={logout} className="pt-3 mt-auto text-[10px] text-white/30 hover:text-white/60 flex items-center gap-1.5 border-t border-white/[0.06]">
-                    <LogOut className="w-3.5 h-3.5" /> Sign Out
+                <button onClick={logout} className="pt-3 mt-auto text-[11px] font-bold text-red-400/80 hover:text-red-400 flex items-center gap-2 border-t border-white/[0.06]">
+                    <LogOut className="w-3.5 h-3.5 text-red-400" /> Sign Out
                 </button>
             </aside>
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto relative">
-                {/* Top Bar */}
+                {/* Top Navigation Bar with Burger Toggle on both Mobile and Desktop */}
                 <div className="sticky top-0 z-30 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setIsSidebarOpen(true)} className="p-1 text-white/50 hover:text-orange-500 lg:hidden">
+                        {/* Always visible burger icon so desktop and mobile can toggle sidebar anytime */}
+                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white/60 hover:text-orange-500 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="flex items-center gap-2">
                             <div className="w-7 h-7 bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
                                 <Clapperboard className="w-4 h-4 text-white" />
                             </div>
-                            <div className="hidden sm:block">
-                                <h1 className="text-xs font-black tracking-tight leading-none">Pinoy UGC Agent</h1>
-                                <span className="text-[8px] text-orange-400 font-bold uppercase tracking-[0.15em]">Tagalog Studio</span>
+                            <div>
+                                <h1 className="text-xs font-black tracking-tight leading-none text-orange-500">Pinoy UGC Agent</h1>
+                                <span className="text-[8px] text-white/40 font-bold uppercase tracking-[0.15em]">Tagalog Studio</span>
                             </div>
                         </div>
                     </div>
+
                     {user && (
                         <div className="flex items-center gap-2">
                             <div className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full flex items-center gap-1.5">
                                 <Zap className="w-3 h-3 text-orange-500 fill-orange-500" />
-                                <span className="text-[10px] font-black">{user.credits}</span>
+                                <span className="text-[10px] font-black">{user.credits} Credits</span>
                             </div>
                             <button onClick={() => setShowPaymentModal(true)} className="px-3 py-1 bg-orange-600 hover:bg-orange-500 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-orange-600/20 transition-all active:scale-95">
                                 <Plus className="w-2.5 h-2.5" /> Top Up
+                            </button>
+                            <button onClick={logout} className="p-1.5 text-white/40 hover:text-red-400 transition-colors" title="Sign Out">
+                                <LogOut className="w-4 h-4" />
                             </button>
                         </div>
                     )}
@@ -833,65 +851,65 @@ const App: React.FC = () => {
                 </div>
             </main>
 
-            {/* ===== GCash Payment Modal ===== */}
+            {/* ===== GCash Payment Modal (Mobile Optimized) ===== */}
             {showPaymentModal && (
-                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-end sm:items-center justify-center">
-                    <div className="bg-[#0f0f12] border border-white/[0.08] rounded-t-[28px] sm:rounded-[28px] w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-5 relative shadow-2xl">
-                        <button onClick={() => { setShowPaymentModal(false); setPaymentStep('packages'); setReceiptImage(null); setPaymentFeedback(null); }} className="absolute top-4 right-4 text-white/30 hover:text-white z-10">
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4">
+                    <div className="bg-[#0f0f12] border border-white/[0.1] rounded-[24px] sm:rounded-[32px] w-full max-w-md max-h-[85vh] flex flex-col p-5 sm:p-6 relative shadow-2xl overflow-hidden">
+                        <button onClick={() => { setShowPaymentModal(false); setPaymentStep('packages'); setReceiptImage(null); setPaymentFeedback(null); }} className="absolute top-4 right-4 text-white/40 hover:text-white z-10 p-1">
                             <X className="w-5 h-5" />
                         </button>
 
                         {paymentStep === 'packages' ? (
-                            <>
-                                <div className="text-center space-y-2 pt-2">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-blue-600/30">
-                                        <Zap className="w-6 h-6 text-white fill-white" />
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                                <div className="text-center space-y-1.5 pt-1">
+                                    <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-blue-600/30">
+                                        <Zap className="w-5 h-5 text-white fill-white" />
                                     </div>
-                                    <h2 className="text-xl font-black italic uppercase tracking-tight">Top Up Credits</h2>
-                                    <p className="text-[10px] text-white/40">Pumili ng credit package at magbayad via GCash.</p>
+                                    <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-tight">Top Up Video Credits</h2>
+                                    <p className="text-[10px] text-white/50">Pumili ng credit package at magbayad via GCash.</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
                                     {GCASH_PACKAGES.map(pkg => (
                                         <button key={pkg.id} onClick={() => { setSelectedPackageId(pkg.id); setPaymentStep('instructions'); }}
-                                            className={`p-3.5 rounded-2xl border transition-all text-left active:scale-[0.97] relative ${pkg.popular ? 'border-blue-500/40 bg-blue-600/10' : 'border-white/[0.08] bg-white/[0.03] hover:border-white/15'}`}>
+                                            className={`p-3.5 rounded-2xl border transition-all text-left active:scale-[0.97] relative ${pkg.popular ? 'border-blue-500/50 bg-blue-600/10' : 'border-white/[0.08] bg-white/[0.03] hover:border-white/15'}`}>
                                             {pkg.popular && (
-                                                <div className="absolute -top-2 right-3 bg-blue-600 px-2 py-0.5 rounded-full">
+                                                <div className="absolute -top-2 right-2 bg-blue-600 px-2 py-0.5 rounded-full">
                                                     <span className="text-[7px] font-black text-white uppercase tracking-widest">Popular</span>
                                                 </div>
                                             )}
                                             <div className="text-[9px] font-bold text-white/40 uppercase tracking-wider">{pkg.label}</div>
                                             <div className="text-lg font-black text-blue-400 mt-0.5">₱{pkg.pricePhp}</div>
-                                            <div className="text-[10px] text-white/50 font-bold mt-0.5">{pkg.credits.toLocaleString()} Credits</div>
+                                            <div className="text-[10px] text-white/60 font-bold mt-0.5">{pkg.credits.toLocaleString()} Credits</div>
                                         </button>
                                     ))}
                                 </div>
 
                                 <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-center">
-                                    <p className="text-[9px] text-white/30">15s video = 100 credits • 30s video = 200 credits</p>
+                                    <p className="text-[9px] text-white/40">15s video = 100 credits • 30s video = 200 credits</p>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <div className="text-center space-y-1 pt-2">
-                                    <h2 className="text-lg font-black italic uppercase tracking-tight">GCash Payment</h2>
-                                    <p className="text-[10px] text-white/40">I-send ang payment at i-attach ang receipt.</p>
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                                <div className="text-center space-y-1 pt-1">
+                                    <h2 className="text-base sm:text-lg font-black italic uppercase tracking-tight">GCash Payment Details</h2>
+                                    <p className="text-[10px] text-white/50">I-send ang bayad at i-attach ang receipt screenshot.</p>
                                 </div>
 
-                                <div className="p-3.5 bg-blue-600/10 border border-blue-500/20 rounded-xl space-y-1.5 text-xs">
-                                    <div className="font-bold text-blue-400 uppercase tracking-wider text-[10px]">GCash Details:</div>
-                                    <div><strong className="text-white">Number:</strong> <span className="text-white/80 font-mono">09454320799</span></div>
-                                    <div><strong className="text-white">Name:</strong> <span className="text-white/80">AL****H M** G.</span></div>
-                                    <div><strong className="text-white">Amount:</strong> <span className="text-blue-400 font-black">₱{GCASH_PACKAGES.find(p => p.id === selectedPackageId)?.pricePhp}</span></div>
+                                <div className="p-3.5 bg-blue-600/10 border border-blue-500/20 rounded-xl space-y-1 text-xs">
+                                    <div className="font-bold text-blue-400 uppercase tracking-wider text-[9px]">GCash Account Info:</div>
+                                    <div><strong className="text-white">GCash Number:</strong> <span className="text-blue-300 font-mono font-bold">09454320799</span></div>
+                                    <div><strong className="text-white">Registered Name:</strong> <span className="text-white/80">AL****H M** G.</span></div>
+                                    <div><strong className="text-white">Total Amount:</strong> <span className="text-blue-400 font-black text-sm">₱{GCASH_PACKAGES.find(p => p.id === selectedPackageId)?.pricePhp}</span></div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">Attach GCash Receipt Screenshot</label>
-                                    <label className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed transition-all cursor-pointer active:scale-[0.98] ${receiptImage ? 'border-green-500/30 bg-green-500/5' : 'border-white/[0.08] bg-white/[0.02] hover:border-blue-500/20'}`}>
+                                    <label className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/50">Attach GCash Receipt Screenshot</label>
+                                    <label className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed transition-all cursor-pointer active:scale-[0.98] ${receiptImage ? 'border-green-500/40 bg-green-500/5' : 'border-white/10 bg-white/[0.02] hover:border-blue-500/30'}`}>
                                         {receiptImage ? (
-                                            <div className="flex items-center gap-2 text-green-400 text-[10px] font-bold"><CheckCircle2 className="w-4 h-4" /> Receipt attached!</div>
+                                            <div className="flex items-center gap-2 text-green-400 text-[10px] font-bold"><CheckCircle2 className="w-4 h-4" /> Receipt attached! Click to change.</div>
                                         ) : (
-                                            <div className="flex flex-col items-center gap-1.5 opacity-40 text-[10px] font-bold"><Upload className="w-4 h-4" /> Upload Screenshot</div>
+                                            <div className="flex flex-col items-center gap-1.5 opacity-40 text-[10px] font-bold"><Upload className="w-4 h-4 text-blue-400" /> Select / Upload Screenshot</div>
                                         )}
                                         <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                             const file = e.target.files?.[0];
@@ -906,14 +924,14 @@ const App: React.FC = () => {
                                     </p>
                                 )}
 
-                                <div className="flex gap-2">
-                                    <button onClick={() => { setPaymentStep('packages'); setReceiptImage(null); }} className="py-3 px-4 bg-white/[0.05] border border-white/[0.08] rounded-xl text-[10px] font-bold text-white/50 active:scale-[0.98]">←</button>
+                                <div className="flex gap-2 pt-1">
+                                    <button onClick={() => { setPaymentStep('packages'); setReceiptImage(null); }} className="py-3 px-4 bg-white/[0.05] border border-white/10 rounded-xl text-[10px] font-bold text-white/60 active:scale-[0.98]">← Back</button>
                                     <button onClick={handleGcashSubmit} disabled={submittingPayment || !receiptImage}
                                         className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-blue-500 font-black text-[10px] uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 disabled:opacity-40 active:scale-[0.98]">
                                         {submittingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Submit for AI Verification"}
                                     </button>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
