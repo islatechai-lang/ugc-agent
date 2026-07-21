@@ -33,6 +33,13 @@ const DURATIONS = [
     { id: '30s', label: '30 Seconds', cost: 200, seconds: 30 },
 ];
 
+// Display ONLY the first 3 preset host templates
+const PRESET_TEMPLATES = [
+    { id: 'template1', name: 'Preset Host 1', path: '/templates/template1.png?v=2' },
+    { id: 'template2', name: 'Preset Host 2', path: '/templates/template2.png?v=2' },
+    { id: 'template3', name: 'Preset Host 3', path: '/templates/template3.png?v=2' },
+];
+
 const App: React.FC = () => {
     const { user, firebaseUser, loading: authLoading, logout, getIdToken, refreshUser } = useAuth();
 
@@ -46,7 +53,10 @@ const App: React.FC = () => {
     const [vibe, setVibe] = useState<AdVibe>(AdVibe.EXCITED_UNBOXING);
     const [productImage, setProductImage] = useState<string | null>(null);
     const [avatarImage, setAvatarImage] = useState<string | null>(null);
-    const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+    
+    // Multiple Custom Hosts array
+    const [customHosts, setCustomHosts] = useState<string[]>([]);
+    
     const [status, setStatus] = useState<GenerationStatus>({ stage: 'idle', message: '' });
     const [hasKey, setHasKey] = useState(false);
     const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -89,22 +99,23 @@ const App: React.FC = () => {
     const [quotaMessage, setQuotaMessage] = useState('');
     const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
     
-    // Sidebar hidden by default as requested!
+    // Sidebar hidden by default
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // Restore saved custom avatar from localStorage on startup
+    // Restore saved custom hosts array from localStorage on startup
     useEffect(() => {
         try {
-            const savedCustom = localStorage.getItem('pinoy_custom_avatar');
-            if (savedCustom) {
-                setCustomAvatar(savedCustom);
+            const saved = localStorage.getItem('pinoy_custom_hosts');
+            if (saved) {
+                const list = JSON.parse(saved);
+                if (Array.isArray(list)) setCustomHosts(list);
             }
         } catch (e) {}
     }, []);
 
     useEffect(() => {
-        if (selectedTemplate === 'custom' && customAvatar) {
-            setAvatarImage(customAvatar);
+        if (selectedTemplate.startsWith('data:image')) {
+            setAvatarImage(selectedTemplate);
             return;
         }
 
@@ -119,10 +130,10 @@ const App: React.FC = () => {
                 }
             } catch (e) { console.warn("Avatar not found:", path); }
         };
-        if (selectedTemplate !== 'custom') {
+        if (!selectedTemplate.startsWith('data:image')) {
             loadAvatar(selectedTemplate);
         }
-    }, [selectedTemplate, customAvatar]);
+    }, [selectedTemplate]);
 
     useEffect(() => {
         loadFFmpeg();
@@ -261,20 +272,36 @@ const App: React.FC = () => {
         }
     };
 
-    const handleCustomAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Add a new custom host to the list
+    const handleAddCustomHost = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const r = new FileReader();
             r.onload = () => {
                 const b64 = r.result as string;
-                setCustomAvatar(b64);
-                setSelectedTemplate('custom');
+                const updated = [b64, ...customHosts];
+                setCustomHosts(updated);
+                setSelectedTemplate(b64);
                 setAvatarImage(b64);
                 try {
-                    localStorage.setItem('pinoy_custom_avatar', b64);
+                    localStorage.setItem('pinoy_custom_hosts', JSON.stringify(updated));
                 } catch (err) {}
             };
             r.readAsDataURL(file);
+        }
+    };
+
+    // Remove a custom host from the list
+    const handleDeleteCustomHost = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const hostToDelete = customHosts[index];
+        const updated = customHosts.filter((_, i) => i !== index);
+        setCustomHosts(updated);
+        try {
+            localStorage.setItem('pinoy_custom_hosts', JSON.stringify(updated));
+        } catch (err) {}
+        if (selectedTemplate === hostToDelete) {
+            setSelectedTemplate(PRESET_TEMPLATES[0].path);
         }
     };
 
@@ -664,7 +691,7 @@ const App: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto relative">
-                {/* Clean Top Navigation Bar: Menu toggle on left, credits + Top Up on right */}
+                {/* Clean Top Navigation Bar */}
                 <div className="sticky top-0 z-30 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white/60 hover:text-orange-500 bg-white/5 hover:bg-white/10 rounded-xl transition-all flex items-center gap-2 text-xs font-bold">
                         <Menu className="w-5 h-5" />
@@ -731,63 +758,82 @@ const App: React.FC = () => {
                                     </section>
                                 </div>
 
-                                {/* Step 3: Template + Intuitive Custom Avatar Upload */}
-                                <section className="space-y-2.5">
+                                {/* Step 3: Bigger Host Template Cards & Multiple Custom Hosts */}
+                                <section className="space-y-3">
                                     <div className="flex items-center justify-between">
                                         <label className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
                                             <span className="w-4 h-4 bg-orange-600 rounded text-white flex items-center justify-center text-[8px] font-black">3</span>
-                                            Host Template
+                                            Select Host Model
                                         </label>
-                                        <span className="text-[9px] text-white/40 font-bold">Pumili ng Host o Mag-upload ng Sarili</span>
+                                        <span className="text-[9px] text-white/40 font-bold">Preset Hosts & Custom Uploads</span>
                                     </div>
                                     
-                                    <div className="grid grid-cols-7 gap-1.5">
-                                        {/* Presets 1 to 6 */}
-                                        {[1, 2, 3, 4, 5, 6].map((num) => {
-                                            const path = `/templates/template${num}.png?v=2`;
-                                            const isSelected = selectedTemplate === path;
+                                    {/* Grid of Larger Host Image Preview Cards */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {/* Presets 1, 2, 3 */}
+                                        {PRESET_TEMPLATES.map((preset) => {
+                                            const isSelected = selectedTemplate === preset.path;
                                             return (
-                                                <button key={num} onClick={() => setSelectedTemplate(path)}
-                                                    className={`aspect-square rounded-xl overflow-hidden border-2 transition-all active:scale-90 relative ${isSelected ? 'border-orange-500 scale-95 shadow-lg shadow-orange-500/30 ring-2 ring-orange-500/40' : 'border-white/[0.06] opacity-50 hover:opacity-90'}`}>
-                                                    <img src={path} className="w-full h-full object-cover" alt={`Template ${num}`} />
+                                                <div
+                                                    key={preset.id}
+                                                    onClick={() => setSelectedTemplate(preset.path)}
+                                                    className={`aspect-[3/4] rounded-2xl overflow-hidden border-2 transition-all cursor-pointer relative group ${isSelected ? 'border-orange-500 shadow-xl shadow-orange-500/30 ring-2 ring-orange-500/40 scale-[0.98]' : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/20'}`}
+                                                >
+                                                    <img src={preset.path} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={preset.name} />
+                                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2.5 pt-6 text-center">
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-white/90">{preset.name}</span>
+                                                    </div>
                                                     {isSelected && (
-                                                        <div className="absolute inset-0 bg-orange-600/10 flex items-center justify-center">
-                                                            <CheckCircle2 className="w-4 h-4 text-orange-400" />
+                                                        <div className="absolute top-2 right-2 w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center shadow-lg">
+                                                            <CheckCircle2 className="w-4 h-4 text-white" />
                                                         </div>
                                                     )}
-                                                </button>
+                                                </div>
                                             );
                                         })}
 
-                                        {/* Custom Host Upload Tile */}
-                                        {customAvatar ? (
-                                            /* Uploaded Custom Avatar Tile: Click tile to SELECT, Click small top button to CHANGE */
-                                            <div 
-                                                onClick={() => { setSelectedTemplate('custom'); setAvatarImage(customAvatar); }}
-                                                className={`aspect-square rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden group ${selectedTemplate === 'custom' ? 'border-orange-500 scale-95 ring-2 ring-orange-500/40 shadow-lg shadow-orange-500/30' : 'border-white/20 opacity-60 hover:opacity-100'}`}
-                                            >
-                                                <img src={customAvatar} className="w-full h-full object-cover" alt="Custom Host" />
-                                                
-                                                {/* Re-upload / Change Icon Overlay */}
-                                                <label onClick={(e) => e.stopPropagation()} className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-orange-600 text-white rounded-md cursor-pointer transition-colors" title="Change custom host image">
-                                                    <RefreshCcw className="w-3 h-3" />
-                                                    <input type="file" className="hidden" accept="image/*" onChange={handleCustomAvatarFile} />
-                                                </label>
+                                        {/* Multiple Custom Uploaded Hosts */}
+                                        {customHosts.map((hostImg, index) => {
+                                            const isSelected = selectedTemplate === hostImg;
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    onClick={() => { setSelectedTemplate(hostImg); setAvatarImage(hostImg); }}
+                                                    className={`aspect-[3/4] rounded-2xl overflow-hidden border-2 transition-all cursor-pointer relative group ${isSelected ? 'border-orange-500 shadow-xl shadow-orange-500/30 ring-2 ring-orange-500/40 scale-[0.98]' : 'border-white/10 opacity-70 hover:opacity-100'}`}
+                                                >
+                                                    <img src={hostImg} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={`Custom Host ${index + 1}`} />
+                                                    
+                                                    {/* Delete Custom Host Button */}
+                                                    <button
+                                                        onClick={(e) => handleDeleteCustomHost(index, e)}
+                                                        className="absolute top-2 left-2 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Delete Host"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
 
-                                                {selectedTemplate === 'custom' && (
-                                                    <div className="absolute inset-0 bg-orange-600/10 pointer-events-none flex items-center justify-center">
-                                                        <CheckCircle2 className="w-4 h-4 text-orange-400" />
+                                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2.5 pt-6 text-center">
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Custom Host {index + 1}</span>
                                                     </div>
-                                                )}
+
+                                                    {isSelected && (
+                                                        <div className="absolute top-2 right-2 w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center shadow-lg">
+                                                            <CheckCircle2 className="w-4 h-4 text-white" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Add New Custom Host Card */}
+                                        <label className="aspect-[3/4] rounded-2xl border-2 border-dashed border-orange-500/40 bg-orange-600/5 hover:bg-orange-600/10 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 group p-4 text-center">
+                                            <div className="w-10 h-10 rounded-full bg-orange-600/20 border border-orange-500/30 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                                <Plus className="w-5 h-5 text-orange-400" />
                                             </div>
-                                        ) : (
-                                            /* Plus (+) Tile when no custom image uploaded yet */
-                                            <label className="aspect-square rounded-xl border-2 border-dashed border-white/20 bg-white/[0.03] hover:border-orange-500 hover:bg-orange-600/10 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-90 group">
-                                                <Plus className="w-6 h-6 text-orange-400 group-hover:scale-125 transition-transform" />
-                                                <span className="text-[7px] font-black uppercase tracking-wider text-white/40 group-hover:text-orange-300 mt-0.5">Custom</span>
-                                                <input type="file" className="hidden" accept="image/*" onChange={handleCustomAvatarFile} />
-                                            </label>
-                                        )}
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Upload Custom Host</span>
+                                            <span className="text-[8px] text-white/40 mt-1">Add model or photo</span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleAddCustomHost} />
+                                        </label>
                                     </div>
                                 </section>
 
@@ -916,7 +962,7 @@ const App: React.FC = () => {
                 </div>
             </main>
 
-            {/* ===== GCash Payment Modal (Mobile Optimized) ===== */}
+            {/* ===== GCash Payment Modal ===== */}
             {showPaymentModal && (
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4">
                     <div className="bg-[#0f0f12] border border-white/[0.1] rounded-[24px] sm:rounded-[32px] w-full max-w-md max-h-[85vh] flex flex-col p-5 sm:p-6 relative shadow-2xl overflow-hidden">
