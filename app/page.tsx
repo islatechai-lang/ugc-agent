@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight, UserPlus } from 'lucide-react';
+import { Play, Loader2, Smartphone, Sparkles, User, ShoppingBag, Clapperboard, CheckCircle2, AlertCircle, Download, Zap, Plus, X, Trash2, Menu, ChevronLeft, Upload, LogOut, Phone, Clock, Edit3, Eye, ChevronRight, UserPlus, ImagePlus, RefreshCcw } from 'lucide-react';
 import { AdVibe, AspectRatio, Config, GenerationStatus } from '../types';
 import { VeoService, Shot } from '../services/veoService';
 import { CustomVideoPlayer } from './components/CustomVideoPlayer';
@@ -88,7 +88,19 @@ const App: React.FC = () => {
     const [showQuotaModal, setShowQuotaModal] = useState(false);
     const [quotaMessage, setQuotaMessage] = useState('');
     const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    
+    // Sidebar hidden by default as requested!
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Restore saved custom avatar from localStorage on startup
+    useEffect(() => {
+        try {
+            const savedCustom = localStorage.getItem('pinoy_custom_avatar');
+            if (savedCustom) {
+                setCustomAvatar(savedCustom);
+            }
+        } catch (e) {}
+    }, []);
 
     useEffect(() => {
         if (selectedTemplate === 'custom' && customAvatar) {
@@ -107,7 +119,9 @@ const App: React.FC = () => {
                 }
             } catch (e) { console.warn("Avatar not found:", path); }
         };
-        loadAvatar(selectedTemplate);
+        if (selectedTemplate !== 'custom') {
+            loadAvatar(selectedTemplate);
+        }
     }, [selectedTemplate, customAvatar]);
 
     useEffect(() => {
@@ -247,10 +261,27 @@ const App: React.FC = () => {
         }
     };
 
+    const handleCustomAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const r = new FileReader();
+            r.onload = () => {
+                const b64 = r.result as string;
+                setCustomAvatar(b64);
+                setSelectedTemplate('custom');
+                setAvatarImage(b64);
+                try {
+                    localStorage.setItem('pinoy_custom_avatar', b64);
+                } catch (err) {}
+            };
+            r.readAsDataURL(file);
+        }
+    };
+
     // Step 1: Generate Script (Preview before video generation)
     const handleGenerateScript = async () => {
         if (!productImage || !avatarImage) {
-            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image at host template.' });
+            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image at pumili/mag-upload ng host template.' });
             return;
         }
 
@@ -566,7 +597,7 @@ const App: React.FC = () => {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsSidebarOpen(false)} />
             )}
 
-            {/* Sidebar (Collapsible on BOTH desktop and mobile) */}
+            {/* Sidebar (Collapsible on BOTH desktop and mobile, hidden by default) */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-72 sm:w-80 bg-[#0f0f12] border-r border-white/[0.06] flex flex-col p-4 sm:p-5 overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2.5">
@@ -633,7 +664,7 @@ const App: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto relative">
-                {/* Clean Top Bar: Burger menu toggle on left, credits + Top Up on right */}
+                {/* Clean Top Navigation Bar: Menu toggle on left, credits + Top Up on right */}
                 <div className="sticky top-0 z-30 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white/60 hover:text-orange-500 bg-white/5 hover:bg-white/10 rounded-xl transition-all flex items-center gap-2 text-xs font-bold">
                         <Menu className="w-5 h-5" />
@@ -683,69 +714,80 @@ const App: React.FC = () => {
                                         </label>
                                     </section>
 
-                                    {/* Vibe Selector */}
+                                    {/* Vibe Selector (Clean 2-column Grid without scrolling) */}
                                     <section className="space-y-2.5">
                                         <label className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
                                             <span className="w-4 h-4 bg-orange-600 rounded text-white flex items-center justify-center text-[8px] font-black">2</span>
                                             Video Vibe
                                         </label>
-                                        <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                        <div className="grid grid-cols-2 gap-1.5">
                                             {Object.values(AdVibe).map((v) => (
                                                 <button key={v} onClick={() => setVibe(v)}
-                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all text-[10px] font-bold active:scale-[0.98] ${vibe === v ? 'border-orange-500/50 bg-orange-600/10 text-white' : 'border-white/[0.06] bg-white/[0.02] text-white/50 hover:border-white/10'}`}>
-                                                    <span className="truncate">{v}</span>
-                                                    {vibe === v && <CheckCircle2 className="w-3.5 h-3.5 text-orange-400 shrink-0" />}
+                                                    className={`px-2.5 py-2 rounded-xl border text-center transition-all text-[10px] font-bold active:scale-[0.98] truncate ${vibe === v ? 'border-orange-500/50 bg-orange-600/10 text-white shadow-sm' : 'border-white/[0.06] bg-white/[0.02] text-white/50 hover:border-white/10'}`}>
+                                                    {v}
                                                 </button>
                                             ))}
                                         </div>
                                     </section>
                                 </div>
 
-                                {/* Step 3: Template + Custom Avatar Upload */}
+                                {/* Step 3: Template + Intuitive Custom Avatar Upload */}
                                 <section className="space-y-2.5">
                                     <div className="flex items-center justify-between">
                                         <label className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
                                             <span className="w-4 h-4 bg-orange-600 rounded text-white flex items-center justify-center text-[8px] font-black">3</span>
                                             Host Template
                                         </label>
-                                        <span className="text-[9px] text-white/40 font-bold">Pumili ng Preset o Mag-upload ng Sariling Host</span>
+                                        <span className="text-[9px] text-white/40 font-bold">Pumili ng Host o Mag-upload ng Sarili</span>
                                     </div>
                                     
                                     <div className="grid grid-cols-7 gap-1.5">
                                         {/* Presets 1 to 6 */}
                                         {[1, 2, 3, 4, 5, 6].map((num) => {
                                             const path = `/templates/template${num}.png?v=2`;
+                                            const isSelected = selectedTemplate === path;
                                             return (
                                                 <button key={num} onClick={() => setSelectedTemplate(path)}
-                                                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all active:scale-90 ${selectedTemplate === path ? 'border-orange-500 shadow-lg shadow-orange-500/20' : 'border-white/[0.06] opacity-50 hover:opacity-80'}`}>
+                                                    className={`aspect-square rounded-xl overflow-hidden border-2 transition-all active:scale-90 relative ${isSelected ? 'border-orange-500 scale-95 shadow-lg shadow-orange-500/30 ring-2 ring-orange-500/40' : 'border-white/[0.06] opacity-50 hover:opacity-90'}`}>
                                                     <img src={path} className="w-full h-full object-cover" alt={`Template ${num}`} />
+                                                    {isSelected && (
+                                                        <div className="absolute inset-0 bg-orange-600/10 flex items-center justify-center">
+                                                            <CheckCircle2 className="w-4 h-4 text-orange-400" />
+                                                        </div>
+                                                    )}
                                                 </button>
                                             );
                                         })}
 
                                         {/* Custom Host Upload Tile */}
-                                        <label className={`aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-90 relative overflow-hidden ${selectedTemplate === 'custom' ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-500/20' : 'border-white/20 bg-white/5 hover:border-orange-500/40'}`}>
-                                            {customAvatar ? (
+                                        {customAvatar ? (
+                                            /* Uploaded Custom Avatar Tile: Click tile to SELECT, Click small top button to CHANGE */
+                                            <div 
+                                                onClick={() => { setSelectedTemplate('custom'); setAvatarImage(customAvatar); }}
+                                                className={`aspect-square rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden group ${selectedTemplate === 'custom' ? 'border-orange-500 scale-95 ring-2 ring-orange-500/40 shadow-lg shadow-orange-500/30' : 'border-white/20 opacity-60 hover:opacity-100'}`}
+                                            >
                                                 <img src={customAvatar} className="w-full h-full object-cover" alt="Custom Host" />
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-1 text-center p-1 opacity-70">
-                                                    <UserPlus className="w-4 h-4 text-orange-400" />
-                                                    <span className="text-[7px] font-black uppercase tracking-widest text-orange-300">Custom</span>
-                                                </div>
-                                            )}
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const r = new FileReader();
-                                                    r.onload = () => {
-                                                        const res = r.result as string;
-                                                        setCustomAvatar(res);
-                                                        setSelectedTemplate('custom');
-                                                    };
-                                                    r.readAsDataURL(file);
-                                                }
-                                            }} />
-                                        </label>
+                                                
+                                                {/* Re-upload / Change Icon Overlay */}
+                                                <label onClick={(e) => e.stopPropagation()} className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-orange-600 text-white rounded-md cursor-pointer transition-colors" title="Change custom host image">
+                                                    <RefreshCcw className="w-3 h-3" />
+                                                    <input type="file" className="hidden" accept="image/*" onChange={handleCustomAvatarFile} />
+                                                </label>
+
+                                                {selectedTemplate === 'custom' && (
+                                                    <div className="absolute inset-0 bg-orange-600/10 pointer-events-none flex items-center justify-center">
+                                                        <CheckCircle2 className="w-4 h-4 text-orange-400" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            /* Plus (+) Tile when no custom image uploaded yet */
+                                            <label className="aspect-square rounded-xl border-2 border-dashed border-white/20 bg-white/[0.03] hover:border-orange-500 hover:bg-orange-600/10 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-90 group">
+                                                <Plus className="w-6 h-6 text-orange-400 group-hover:scale-125 transition-transform" />
+                                                <span className="text-[7px] font-black uppercase tracking-wider text-white/40 group-hover:text-orange-300 mt-0.5">Custom</span>
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleCustomAvatarFile} />
+                                            </label>
+                                        )}
                                     </div>
                                 </section>
 
