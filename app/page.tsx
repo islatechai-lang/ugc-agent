@@ -472,15 +472,38 @@ const App: React.FC = () => {
             setStatus({ stage: 'generating', message: 'Pinagsasama ang mga shots...', progress: 95 });
             const finalBlobUrl = await concatenateVideos(completedVideoUrls);
 
+            let permanentUrl = finalBlobUrl;
+            try {
+                setStatus({ stage: 'generating', message: 'Sine-save ang video sa cloud storage...', progress: 98 });
+                const videoBlob = await (await fetch(finalBlobUrl)).blob();
+                const uploadForm = new FormData();
+                uploadForm.append('video', videoBlob, `${newCampaignId}.mp4`);
+
+                const uploadRes = await fetch('/api/video/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: uploadForm
+                });
+
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.url) {
+                        permanentUrl = uploadData.url;
+                    }
+                }
+            } catch (uploadErr) {
+                console.warn("Failed to upload video to permanent CDN, using local blob fallback:", uploadErr);
+            }
+
             try {
                 await fetch('/api/campaign', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ action: 'finishCampaign', campaignId: newCampaignId, data: { masterVideoUrl: finalBlobUrl } })
+                    body: JSON.stringify({ action: 'finishCampaign', campaignId: newCampaignId, data: { masterVideoUrl: permanentUrl } })
                 });
             } catch (e) { console.error("Failed to finish campaign", e); }
 
-            setMasterVideoUrl(finalBlobUrl);
+            setMasterVideoUrl(permanentUrl);
             setStatus({ stage: 'completed', message: 'Tapos na ang iyong viral Tagalog UGC video!' });
             fetchProjects();
         } catch (error: any) {
