@@ -305,10 +305,10 @@ const App: React.FC = () => {
         }
     };
 
-    // Step 1: Generate Script (Preview before video generation)
-    const handleGenerateScript = async () => {
+    // Streamlined 1-Click UGC Video Production (Option A)
+    const handleGenerateUgcVideo = async () => {
         if (!productImage || !avatarImage) {
-            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image at pumili/mag-upload ng host template.' });
+            setStatus({ stage: 'error', message: 'Mag-upload muna ng product image at pumili ng host template.' });
             return;
         }
 
@@ -318,31 +318,8 @@ const App: React.FC = () => {
             return;
         }
 
-        setGeneratingScript(true);
-        setScriptReady(false);
-        setStatus({ stage: 'generating', message: 'Gumagawa ng Tagalog script...', progress: 10 });
-
-        try {
-            const productB64 = productImage.split(',')[1];
-            const generatedShots = await VeoService.createScript(productB64, vibe, selectedDuration, config.simulateMode);
-            setEditableShots(generatedShots);
-            setScriptReady(true);
-            setStatus({ stage: 'idle', message: '' });
-        } catch (error: any) {
-            setStatus({ stage: 'error', message: error.message || 'Hindi nagawa ang script.' });
-        } finally {
-            setGeneratingScript(false);
-        }
-    };
-
-    // Step 2: Generate Videos from approved script
-    const handleProduceVideo = async () => {
-        if (!productImage || !avatarImage || editableShots.length === 0) return;
-
-        const durationConfig = DURATIONS.find(d => d.id === selectedDuration)!;
-
         if (!ffmpegLoaded) {
-            setStatus({ stage: 'error', message: 'FFmpeg is still loading. Maghintay lang.' });
+            setStatus({ stage: 'error', message: 'FFmpeg is still loading. Maghintay lang sandali.' });
             return;
         }
 
@@ -352,9 +329,7 @@ const App: React.FC = () => {
         }
 
         setStatus({ stage: 'generating', message: 'Ini-setup ang production...', progress: 5 });
-        setShots(editableShots);
         setMasterVideoUrl(null);
-        setScriptReady(false);
 
         try {
             const token = await getIdToken();
@@ -390,41 +365,47 @@ const App: React.FC = () => {
 
             await refreshUser();
 
+            // Step 1: Generate optimal UGC Director Shots
+            setStatus({ stage: 'generating', message: 'Gumagawa ng viral Filipino UGC concept...', progress: 10 });
+            const productB64 = productImage.split(',')[1];
+            const shots = await VeoService.createScript(productB64, vibe, selectedDuration, config.simulateMode);
+            setShots(shots);
+
             await fetch('/api/campaign', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'saveShots', campaignId: newCampaignId, data: { shots: editableShots } })
+                body: JSON.stringify({ action: 'saveShots', campaignId: newCampaignId, data: { shots } })
             });
 
-            const totalShots = editableShots.length;
+            const totalShots = shots.length;
 
-            // Step 1: Generate all reference images concurrently
+            // Step 2: Generate all reference images concurrently
             setStatus({
                 stage: 'generating',
                 message: 'Ini-generate ang mga reference frames...',
-                progress: 15
+                progress: 20
             });
 
             const refImages = await Promise.all(
-                editableShots.map(shot =>
+                shots.map(shot =>
                     VeoService.generateShotReference(shot.imagePrompt, avatarImage!, productImage!, config.simulateMode)
                 )
             );
 
             setShots(prev => prev.map((s, idx) => ({ ...s, refImage: refImages[idx], status: 'generating' })));
 
-            // Step 2: Render all video shots in parallel (2 RPM auto-managed)
+            // Step 3: Render all video shots in parallel (2 RPM auto-managed)
             const shotDuration = selectedDuration === '15s' ? 4 : 8;
             let completedCount = 0;
 
             setStatus({
                 stage: 'generating',
                 message: `Sabay-sabay na nirerender ang mga video (0/${totalShots} tapos)...`,
-                progress: 25
+                progress: 30
             });
 
             const completedShotResults = await Promise.all(
-                editableShots.map(async (shot, i) => {
+                shots.map(async (shot, i) => {
                     const refImg = refImages[i];
                     const videoUrl = await VeoService.animateShot(
                         shot,
@@ -436,7 +417,7 @@ const App: React.FC = () => {
                     );
 
                     completedCount++;
-                    const progressPercent = Math.round(25 + (completedCount / totalShots) * 65);
+                    const progressPercent = Math.round(30 + (completedCount / totalShots) * 60);
                     setStatus({
                         stage: 'generating',
                         message: `Sabay-sabay na nirerender ang mga video (${completedCount}/${totalShots} tapos)...`,
@@ -465,13 +446,15 @@ const App: React.FC = () => {
             );
 
             // Maintain exact sequential order: Hook -> Feature -> Demo -> CTA
-            const completedVideoUrls = editableShots.map(shot => 
+            const completedVideoUrls = shots.map(shot => 
                 completedShotResults.find(r => r.id === shot.id)!.videoUrl
             );
 
+            // Step 4: Stitch videos
             setStatus({ stage: 'generating', message: 'Pinagsasama ang mga shots...', progress: 95 });
             const finalBlobUrl = await concatenateVideos(completedVideoUrls);
 
+            // Step 5: Save to permanent cloud storage
             let permanentUrl = finalBlobUrl;
             try {
                 setStatus({ stage: 'generating', message: 'Sine-save ang video sa cloud storage...', progress: 98 });
@@ -708,7 +691,11 @@ const App: React.FC = () => {
                         <div className="p-3 border border-dashed border-white/[0.06] rounded-xl text-center text-[10px] text-white/30">Wala pang projects</div>
                     ) : (
                         projects.slice(0, 8).map(p => (
-                            <div key={p.id} onClick={() => { setSelectedProject(p); setModalVideoUrl(p.master_video_url && p.master_video_url !== 'Saved' ? p.master_video_url : null); }}
+                            <div key={p.id} onClick={() => {
+                                setSelectedProject(p);
+                                const validUrl = p.master_video_url && p.master_video_url !== 'Saved' && !p.master_video_url.startsWith('blob:') ? p.master_video_url : null;
+                                setModalVideoUrl(validUrl);
+                            }}
                                 className="p-2.5 bg-white/[0.02] border border-white/[0.05] rounded-xl hover:bg-white/[0.05] transition-all cursor-pointer flex items-center justify-between group">
                                 <div className="min-w-0">
                                     <div className="text-[10px] font-bold text-white/80 truncate">{p.vibe}</div>
@@ -895,53 +882,13 @@ const App: React.FC = () => {
                                     </div>
                                 </section>
 
-                                {/* Generate Script Button */}
-                                {!scriptReady && status.stage !== 'generating' && (
-                                    <button onClick={handleGenerateScript} disabled={generatingScript || !productImage}
-                                        className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 font-black text-sm uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-orange-600/20 flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98]">
-                                        {generatingScript ? <Loader2 className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />}
-                                        {generatingScript ? 'Gumagawa ng Script...' : 'Generate & Preview Script'}
+                                {/* 1-Click Generate UGC Video Button */}
+                                {status.stage !== 'generating' && (
+                                    <button onClick={handleGenerateUgcVideo} disabled={!productImage || !avatarImage}
+                                        className="w-full py-4 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-xl shadow-orange-600/25 flex items-center justify-center gap-2.5 disabled:opacity-40 active:scale-[0.98]">
+                                        <Sparkles className="w-5 h-5 fill-white/20 text-white" />
+                                        <span>Generate UGC Video ({DURATIONS.find(d => d.id === selectedDuration)?.cost || 100} Credits)</span>
                                     </button>
-                                )}
-
-                                {/* Script Preview & Edit */}
-                                {scriptReady && editableShots.length > 0 && (
-                                    <div className="space-y-3 p-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <Edit3 className="w-4 h-4 text-orange-400" />
-                                                <span className="text-xs font-black uppercase tracking-wider">Script Preview</span>
-                                            </div>
-                                            <span className="text-[9px] text-white/30 font-bold">I-edit kung may gusto kang baguhin</span>
-                                        </div>
-                                        {editableShots.map((shot, idx) => (
-                                            <div key={idx} className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[9px] font-black text-orange-400 uppercase tracking-wider bg-orange-600/10 px-2 py-0.5 rounded">{shot.type}</span>
-                                                </div>
-                                                <textarea
-                                                    value={shot.script}
-                                                    onChange={(e) => {
-                                                        const updated = [...editableShots];
-                                                        updated[idx] = { ...updated[idx], script: e.target.value };
-                                                        setEditableShots(updated);
-                                                    }}
-                                                    rows={2}
-                                                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-orange-500/40 resize-none leading-relaxed"
-                                                />
-                                            </div>
-                                        ))}
-                                        <div className="flex gap-2 pt-2">
-                                            <button onClick={() => { setScriptReady(false); setEditableShots([]); }}
-                                                className="flex-1 py-3 bg-white/[0.05] border border-white/[0.08] font-bold rounded-xl text-[10px] uppercase tracking-wider text-white/60 hover:text-white transition-all active:scale-[0.98]">
-                                                ← Regenerate
-                                            </button>
-                                            <button onClick={handleProduceVideo}
-                                                className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-green-500 font-black rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 transition-all active:scale-[0.98]">
-                                                <Play className="w-4 h-4 fill-white" /> Produce Video ({durationConfig.cost} Credits)
-                                            </button>
-                                        </div>
-                                    </div>
                                 )}
 
                                 {/* Generation Progress */}
