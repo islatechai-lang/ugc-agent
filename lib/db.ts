@@ -103,4 +103,14 @@ export const initDb = async () => {
       preview_usage INTEGER DEFAULT 0
     )
   `);
+
+  // Video assets storage table
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS temp_assets (
+      id TEXT PRIMARY KEY,
+      content BLOB,
+      content_type TEXT DEFAULT 'video/mp4',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 };
