@@ -371,7 +371,7 @@ const App: React.FC = () => {
                 return;
             }
 
-            const modelToUse = quota.model || 'veo-3.1-fast-generate-preview';
+            const modelToUse = quota.model || 'veo-3.1-lite-generate-preview';
 
             const createRes = await fetch('/api/campaign', {
                 method: 'POST',
@@ -396,48 +396,78 @@ const App: React.FC = () => {
                 body: JSON.stringify({ action: 'saveShots', campaignId: newCampaignId, data: { shots: editableShots } })
             });
 
-            const completedVideoUrls: string[] = [];
             const totalShots = editableShots.length;
 
-            for (let i = 0; i < totalShots; i++) {
-                const shot = editableShots[i];
-                setCurrentShotId(shot.id);
+            // Step 1: Generate all reference images concurrently
+            setStatus({
+                stage: 'generating',
+                message: 'Ini-generate ang mga reference frames...',
+                progress: 15
+            });
 
-                const shotProgressBase = 10;
-                const shotProgressRange = 80;
-                setStatus({
-                    stage: 'generating',
-                    message: `Shot ${i + 1}/${totalShots}: ${shot.type}...`,
-                    progress: Math.round(shotProgressBase + (i / totalShots) * shotProgressRange)
-                });
+            const refImages = await Promise.all(
+                editableShots.map(shot =>
+                    VeoService.generateShotReference(shot.imagePrompt, avatarImage!, productImage!, config.simulateMode)
+                )
+            );
 
-                setShots(prev => prev.map(s => s.id === shot.id ? { ...s, status: 'generating' } : s));
+            setShots(prev => prev.map((s, idx) => ({ ...s, refImage: refImages[idx], status: 'generating' })));
 
-                const refImg = await VeoService.generateShotReference(shot.imagePrompt, avatarImage!, productImage!, config.simulateMode);
-                setShots(prev => prev.map(s => s.id === shot.id ? { ...s, refImage: refImg } : s));
+            // Step 2: Render all video shots in parallel (2 RPM auto-managed)
+            const shotDuration = selectedDuration === '15s' ? 4 : 8;
+            let completedCount = 0;
 
-                const videoUrl = await VeoService.animateShot(shot, refImg, (msg) => {
-                    setStatus(prev => ({ ...prev, message: `Finalizing shot...` }));
-                }, modelToUse, config.simulateMode);
+            setStatus({
+                stage: 'generating',
+                message: `Sabay-sabay na nirerender ang mga video (0/${totalShots} tapos)...`,
+                progress: 25
+            });
 
-                await fetch('/api/quota', {
-                    method: 'POST',
-                    body: JSON.stringify({ model: modelToUse })
-                });
+            const completedShotResults = await Promise.all(
+                editableShots.map(async (shot, i) => {
+                    const refImg = refImages[i];
+                    const videoUrl = await VeoService.animateShot(
+                        shot,
+                        refImg,
+                        (msg) => {},
+                        modelToUse,
+                        shotDuration,
+                        config.simulateMode
+                    );
 
-                completedVideoUrls.push(videoUrl);
-                setShots(prev => prev.map(s => s.id === shot.id ? { ...s, status: 'completed', videoUrl } : s));
+                    completedCount++;
+                    const progressPercent = Math.round(25 + (completedCount / totalShots) * 65);
+                    setStatus({
+                        stage: 'generating',
+                        message: `Sabay-sabay na nirerender ang mga video (${completedCount}/${totalShots} tapos)...`,
+                        progress: progressPercent
+                    });
 
-                await fetch('/api/campaign', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({
-                        action: 'updateShot',
-                        campaignId: newCampaignId,
-                        data: { type: shot.type, status: 'completed', videoUrl, refImage: refImg }
-                    })
-                });
-            }
+                    setShots(prev => prev.map(s => s.id === shot.id ? { ...s, status: 'completed', videoUrl } : s));
+
+                    await fetch('/api/quota', {
+                        method: 'POST',
+                        body: JSON.stringify({ model: modelToUse })
+                    });
+
+                    await fetch('/api/campaign', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                            action: 'updateShot',
+                            campaignId: newCampaignId,
+                            data: { type: shot.type, status: 'completed', videoUrl, refImage: refImg }
+                        })
+                    });
+
+                    return { id: shot.id, videoUrl };
+                })
+            );
+
+            // Maintain exact sequential order: Hook -> Feature -> Demo -> CTA
+            const completedVideoUrls = editableShots.map(shot => 
+                completedShotResults.find(r => r.id === shot.id)!.videoUrl
+            );
 
             setStatus({ stage: 'generating', message: 'Pinagsasama ang mga shots...', progress: 95 });
             const finalBlobUrl = await concatenateVideos(completedVideoUrls);

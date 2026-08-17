@@ -31,21 +31,21 @@ export async function GET() {
             stats = { fast_usage: 0, preview_usage: 0 };
         }
 
-        // Tier 1: First 2 generations (8 shots) using the fast model first
-        if ((stats.fast_usage as number) < 8) {
+        // Tier 1: First 5 generations (20 shots) using the cost-efficient lite model first
+        if ((stats.preview_usage as number) < 20) {
             return NextResponse.json({
                 allowed: true,
-                model: 'veo-3.1-fast-generate-preview',
-                remainingInTier: 8 - (stats.fast_usage as number)
+                model: 'veo-3.1-lite-generate-preview',
+                remainingInTier: 20 - (stats.preview_usage as number)
             });
         }
 
-        // Tier 2: Next 2 generations (8 shots) using the standard quality model second
-        if ((stats.preview_usage as number) < 8) {
+        // Tier 2: Next 5 generations (20 shots) using the fast model second
+        if ((stats.fast_usage as number) < 20) {
             return NextResponse.json({
                 allowed: true,
-                model: 'veo-3.1-generate-preview',
-                remainingInTier: 8 - (stats.preview_usage as number)
+                model: 'veo-3.1-fast-generate-preview',
+                remainingInTier: 20 - (stats.fast_usage as number)
             });
         }
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
         if (action === 'exhaust') {
             await db.execute({
-                sql: 'UPDATE system_stats SET fast_usage = 8, preview_usage = 8 WHERE date = ?',
+                sql: 'UPDATE system_stats SET fast_usage = 20, preview_usage = 20 WHERE date = ?',
                 args: [today]
             });
             return NextResponse.json({ success: true });
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
                 sql: 'UPDATE system_stats SET fast_usage = fast_usage + 1 WHERE date = ?',
                 args: [today]
             });
-        } else if (model === 'veo-3.1-generate-preview') {
+        } else if (model === 'veo-3.1-lite-generate-preview' || model === 'veo-3.1-generate-preview') {
             await db.execute({
                 sql: 'UPDATE system_stats SET preview_usage = preview_usage + 1 WHERE date = ?',
                 args: [today]

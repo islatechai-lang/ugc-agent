@@ -13,31 +13,33 @@ export interface Shot {
 }
 
 export class VeoService {
-  private static lastCalls: number[] = [];
+  private static veoCallTimestamps: number[] = [];
+  private static queueMutex = Promise.resolve();
 
-  private static async ensureQuota(onProgress?: (msg: string) => void) {
-    const now = Date.now();
-    // Keep only calls from the last 65 seconds
-    this.lastCalls = this.lastCalls.filter(t => now - t < 65000);
+  /**
+   * Slot management strictly for Veo Video generation (2 RPM limit).
+   * Uses serialized mutex to allow parallel Shot requests to queue properly.
+   */
+  private static async acquireVeoSlot(onProgress?: (msg: string) => void): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.queueMutex = this.queueMutex.then(async () => {
+        const now = Date.now();
+        this.veoCallTimestamps = this.veoCallTimestamps.filter(t => now - t < 62000);
 
-    if (this.lastCalls.length >= 2) {
-      const waitTime = 65000 - (now - this.lastCalls[0]);
-      if (waitTime > 0) {
-        await this.serverLog('info', `Quota protection: Waiting ${Math.ceil(waitTime / 1000)}s for next slot...`);
-
-        // Polling wait to allow progress updates in UI
-        const startWait = Date.now();
-        while (Date.now() - startWait < waitTime) {
-          const remaining = Math.ceil((waitTime - (Date.now() - startWait)) / 1000);
-          if (onProgress) onProgress(`Optimizing cinematic quality...`);
-          await new Promise(res => setTimeout(res, 1000));
+        if (this.veoCallTimestamps.length >= 2) {
+          const waitTime = 62000 - (now - this.veoCallTimestamps[0]);
+          if (waitTime > 0) {
+            await this.serverLog('info', `2 RPM Quota Window: Waiting ${Math.ceil(waitTime / 1000)}s for next video slot...`);
+            if (onProgress) onProgress(`Optimizing slot (${Math.ceil(waitTime / 1000)}s)...`);
+            await new Promise(res => setTimeout(res, waitTime));
+          }
+          this.veoCallTimestamps = this.veoCallTimestamps.filter(t => Date.now() - t < 62000);
         }
-      }
-      // Re-filter after waiting
-      this.lastCalls = this.lastCalls.filter(t => Date.now() - t < 65000);
-    }
 
-    this.lastCalls.push(Date.now());
+        this.veoCallTimestamps.push(Date.now());
+        resolve();
+      });
+    });
   }
 
   /**
@@ -66,7 +68,7 @@ export class VeoService {
   /**
    * Helper to handle API retries for 429s (Quota) and 500s (Internal Errors)
    */
-  private static async callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 20000): Promise<T> {
+  private static async callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 15000): Promise<T> {
     try {
       return await fn();
     } catch (error: any) {
@@ -79,7 +81,7 @@ export class VeoService {
           const type = isRateLimit ? "Rate limit" : "Server issue";
           await this.serverLog('warn', `${type} hit. Waiting ${delay / 1000}s for cooloff... (${retries} attempts left)`);
           await new Promise(res => setTimeout(res, delay));
-          return this.callWithRetry(fn, retries - 1, delay * 2);
+          return this.callWithRetry(fn, retries - 1, delay * 1.5);
         }
       }
       throw error;
@@ -103,7 +105,6 @@ export class VeoService {
     }
 
     return this.callWithRetry(async () => {
-      await this.ensureQuota();
       const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
@@ -167,7 +168,6 @@ export class VeoService {
     }
 
     return this.callWithRetry(async () => {
-      await this.ensureQuota();
       const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
@@ -202,9 +202,10 @@ export class VeoService {
     refImageB64: string,
     onProgress: (msg: string) => void,
     modelName: string, // Dynamic model name
+    durationSeconds: number = 8, // 4s for 15s video, 8s for 30s video
     simulateMode = false
   ): Promise<string> {
-    await this.serverLog('info', `Starting animation for shot: ${shot.type} using ${modelName}`);
+    await this.serverLog('info', `Starting animation for shot: ${shot.type} using ${modelName} (${durationSeconds}s)`);
 
     if (simulateMode) {
       onProgress("Simulating render...");
@@ -218,7 +219,7 @@ export class VeoService {
     const ai = new GoogleGenAI({ apiKey });
 
     let operation = await this.callWithRetry(async () => {
-      await this.ensureQuota(onProgress);
+      await this.acquireVeoSlot(onProgress);
       return ai.models.generateVideos({
         model: modelName,
         prompt: finalPrompt,
@@ -228,6 +229,7 @@ export class VeoService {
         },
         config: {
           numberOfVideos: 1,
+          durationSeconds: durationSeconds,
           resolution: '720p',
           aspectRatio: '9:16'
         }
