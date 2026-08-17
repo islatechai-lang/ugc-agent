@@ -324,7 +324,7 @@ const App: React.FC = () => {
 
         try {
             const productB64 = productImage.split(',')[1];
-            const generatedShots = await VeoService.createScript(productB64, vibe, config.simulateMode);
+            const generatedShots = await VeoService.createScript(productB64, vibe, selectedDuration, config.simulateMode);
             setEditableShots(generatedShots);
             setScriptReady(true);
             setStatus({ stage: 'idle', message: '' });
@@ -472,30 +472,15 @@ const App: React.FC = () => {
             setStatus({ stage: 'generating', message: 'Pinagsasama ang mga shots...', progress: 95 });
             const finalBlobUrl = await concatenateVideos(completedVideoUrls);
 
-            let masterVideoUrlToSave = finalBlobUrl;
-            try {
-                setStatus({ stage: 'generating', message: 'Nilalagyan ng Tagalog subtitles...', progress: 98 });
-                const segments = editableShots.map(shot => ({ text: shot.script, duration: durationConfig.seconds / editableShots.length }));
-                const subRes = await fetch('/api/video/subtitles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ videoUrl: finalBlobUrl, segments })
-                });
-                if (subRes.ok) {
-                    const render = await subRes.json();
-                    if (render.status === 'succeeded' && render.url) masterVideoUrlToSave = render.url;
-                }
-            } catch (e: any) { console.warn("Subtitle step warning:", e); }
-
             try {
                 await fetch('/api/campaign', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ action: 'finishCampaign', campaignId: newCampaignId, data: { masterVideoUrl: masterVideoUrlToSave } })
+                    body: JSON.stringify({ action: 'finishCampaign', campaignId: newCampaignId, data: { masterVideoUrl: finalBlobUrl } })
                 });
             } catch (e) { console.error("Failed to finish campaign", e); }
 
-            setMasterVideoUrl(masterVideoUrlToSave);
+            setMasterVideoUrl(finalBlobUrl);
             setStatus({ stage: 'completed', message: 'Tapos na ang iyong viral Tagalog UGC video!' });
             fetchProjects();
         } catch (error: any) {

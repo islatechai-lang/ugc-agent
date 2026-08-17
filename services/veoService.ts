@@ -91,16 +91,29 @@ export class VeoService {
   /**
    * Stage 1: Generate a 4-part script by looking at the product image.
    */
-  static async createScript(productB64: string, vibe: string, simulateMode = false): Promise<Shot[]> {
-    await this.serverLog('info', `Generating script for vibe: ${vibe}`);
+  static async createScript(
+    productB64: string,
+    vibe: string,
+    duration: '15s' | '30s' = '15s',
+    simulateMode = false
+  ): Promise<Shot[]> {
+    await this.serverLog('info', `Generating script for vibe: ${vibe} with duration: ${duration}`);
+
+    const is15s = duration === '15s';
+    const shotDuration = is15s ? 4 : 8;
 
     if (simulateMode) {
       await new Promise(res => setTimeout(res, 2000));
-      return [
-        { id: 0, type: 'Hook', script: 'Hoy guys! Tingnan niyo ito, napaka-amazing talaga!', imagePrompt: 'Filipino host holding the product with a smile', videoPrompt: 'Zoom in on product', status: 'pending' },
-        { id: 1, type: 'Feature', script: 'Tingnan niyo naman ang napakagandang texture at detalye nito.', imagePrompt: 'Close up of product detail', videoPrompt: 'Pan across the product labels', status: 'pending' },
-        { id: 2, type: 'Demo', script: 'Napakadaling gamitin nito kahit saan, swak na swak sa araw-araw.', imagePrompt: 'Product on a table', videoPrompt: 'Hand picking up product', status: 'pending' },
-        { id: 3, type: 'CTA', script: 'Kaya ano pang hinihintay niyo? I-click ang yellow basket sa ibaba at bumili na ngayon!', imagePrompt: 'Filipino host waving with product', videoPrompt: 'Final hero shot', status: 'pending' }
+      return is15s ? [
+        { id: 0, type: 'Hook', script: 'Hoy mga beh, tingnan niyo ito!', imagePrompt: 'Filipino host holding the product with a smile', videoPrompt: 'Holding product toward camera smiling', status: 'pending' },
+        { id: 1, type: 'Feature', script: 'Super ganda ng texture at packaging nito.', imagePrompt: 'Close up of product detail', videoPrompt: 'Showing product details close to lens', status: 'pending' },
+        { id: 2, type: 'Demo', script: 'Araw-araw ko na itong ginagamit ngayon.', imagePrompt: 'Product on a table', videoPrompt: 'Natural handheld usage demonstrating product', status: 'pending' },
+        { id: 3, type: 'CTA', script: 'I-click niyo na yung yellow basket sa baba!', imagePrompt: 'Filipino host pointing down with product', videoPrompt: 'Friendly smile naturally pointing downward toward bottom of frame', status: 'pending' }
+      ] : [
+        { id: 0, type: 'Hook', script: 'Sobrang tagal ko nang naghahanap ng ganito. Buti na lang nahanap ko ito online!', imagePrompt: 'Filipino host holding the product with an excited smile', videoPrompt: 'Speaking enthusiastically directly to camera showing product', status: 'pending' },
+        { id: 1, type: 'Feature', script: 'Tingnan niyo naman ang napakagandang quality nito, solid talaga ang pagkakagawa at napaka-effective.', imagePrompt: 'Close up of product detail', videoPrompt: 'Turning product around showing fine details in natural light', status: 'pending' },
+        { id: 2, type: 'Demo', script: 'Swak na swak ito sa pang-araw-araw na gamit. Napakadali pang dalhin kahit saan ka pumunta.', imagePrompt: 'Product on a table', videoPrompt: 'Testing and applying or demonstrating the product naturally', status: 'pending' },
+        { id: 3, type: 'CTA', script: 'Kaya i-click niyo na yung yellow basket sa baba at mag-checkout na habang naka-sale pa!', imagePrompt: 'Filipino host pointing down with product', videoPrompt: 'Waving with product and naturally pointing downward toward bottom of frame', status: 'pending' }
       ];
     }
 
@@ -112,21 +125,104 @@ export class VeoService {
         contents: {
           parts: [
             {
-              text: `You are a world-class TikTok UGC director. Analyze this product image and create a 4-part viral ad script. 
-            Vibe: ${vibe}.
-            
-            CRITICAL LANGUAGE REQUIREMENT:
-            The script MUST be generated entirely in the Tagalog (Filipino / Taglish) language. The person in the video is speaking Tagalog. Under no circumstances should the scripts be in English.
-            The script field in the JSON output must be strictly in Tagalog language.
-            
-            Requirements:
-            1. Hook: Catchy opener speaking directly to camera in Tagalog.
-            2. Feature: Demonstrating a key visual aspect of the product, speaking in Tagalog.
-            3. Demo: Natural usage in a handheld "day in the life" style, speaking in Tagalog.
-            4. CTA: Friendly sign-off in Tagalog, specifically instructing the viewer to click the "yellow basket" (yellow basket / dilaw na basket / yellow cart) to purchase the product (common TikTok affiliate style).
-            
-            Output ONLY a valid JSON array of 4 objects with: type, script, imagePrompt, videoPrompt.
-            Do not include markdown formatting or extra text.` },
+              text: `You are an expert TikTok UGC ad director specializing in creating high-converting TikTok Shop Affiliate videos for Filipino audiences.
+
+Your task is to analyze the uploaded product image and the chosen Vibe, then generate a seamless 4-part viral UGC ad script and prompt package (Hook, Feature, Demo, CTA).
+
+Your objective is to generate shots that look indistinguishable from authentic TikTok Shop Affiliate content created by a real Filipino creator. The final stitched video should feel completely natural, authentic, and native to TikTok—never AI-generated or rushed.
+
+────────────────────────────────────────
+TARGET VIDEO DURATION & STRICT WORD LIMITS
+────────────────────────────────────────
+
+Target Video Setting: ${duration}
+(Clip Duration Per Shot: ${shotDuration} seconds)
+
+CRITICAL TIMING & PACING RULES (TO PREVENT DIALOGUE FROM GETTING CUT OFF):
+Natural Tagalog speech runs at ~2 to 2.5 words per second. Every clip MUST have a 0.5-second natural silence/pause at the end so it never cuts off mid-sentence.
+
+${is15s ? `• 15-SECOND VIDEO MODE (4 seconds per shot):
+  - STRICT WORD LIMIT: Exactly 6 to 9 words MAXIMUM per shot script.
+  - Structure: One single short, punchy sentence only.
+  - Examples:
+    * Hook: "Hoy mga beh, tingnan niyo 'to!" (6 words)
+    * Feature: "Super creamy at hindi malagkit sa balat." (7 words)
+    * Demo: "Araw-araw ko na 'tong ginagamit, grabe." (6 words)
+    * CTA: "I-click niyo na yung yellow basket sa baba!" (8 words)` : `• 30-SECOND VIDEO MODE (8 seconds per shot):
+  - STRICT WORD LIMIT: Exactly 14 to 18 words MAXIMUM per shot script.
+  - Structure: Two short conversational sentences with a brief reaction pause.
+  - Example: "Sobrang tagal ko nang naghahanap ng ganito. Buti na lang nahanap ko 'to online!" (14 words)`}
+
+NEVER exceed these word limits. Dialogue must comfortably finish with time to spare before the clip ends.
+
+────────────────────────────────────────
+OVERALL OBJECTIVE & STRUCTURE
+────────────────────────────────────────
+
+The 4 video shots will be animated and stitched together into ONE continuous, seamless TikTok advertisement:
+
+1. HOOK (Shot 1):
+   • Immediate pattern interrupt speaking directly to camera in casual Tagalog/Taglish.
+   • Grabs attention through curiosity, relatable problem, or surprising reaction.
+
+2. FEATURE (Shot 2):
+   • Showcases the key selling point or texture/details of the product naturally.
+   • Authentic close-up or creator interaction with the item.
+
+3. DEMO (Shot 3):
+   • Natural in-action usage in a daily life / handheld vlog style.
+   • Authentic reaction and genuine testimonial.
+
+4. CTA (Shot 4):
+   • High-converting TikTok Shop affiliate call-to-action.
+   • The creator verbally tells viewers to check the yellow basket while naturally pointing downward.
+
+────────────────────────────────────────
+CONSISTENCY & CREATOR IDENTITY
+────────────────────────────────────────
+
+The SAME host (from Reference 1) and the SAME product (from Reference 2) must appear consistently across all 4 shots.
+
+Maintain identical:
+• Face, hair, outfit, and accessories
+• Room setting, natural lighting, and background
+• Voice, tone, accent, and casual energy level
+
+────────────────────────────────────────
+DIALOGUE & ACTING STYLE
+────────────────────────────────────────
+
+• Vibe: ${vibe}
+• Language: Strictly natural, conversational everyday Filipino / Taglish.
+• Tone: Friendly, authentic, and relatable—like a friend recommending something they personally bought with their own money.
+• Natural Slang (when appropriate):
+  - Female creators: "Mga beh...", "Girl...", "Sis...", "Sobrang ganda nito..."
+  - Male creators: "Mga par...", "Bro...", "Tol...", "Solid 'to..."
+• NEVER use formal Tagalog, robotic script language, or corporate commercial tones.
+• The creator should speak naturally, breathe naturally, and maintain believable pacing.
+
+────────────────────────────────────────
+CAMERA, FRAMING & STRICT NO-UI RULES
+────────────────────────────────────────
+
+• Camera Style: Vertical 9:16 authentic smartphone camera quality, realistic handheld camera physics, natural daylight, shot like an organic TikTok vlog.
+• NEVER generate on-screen phone borders, phone screen frames, camera UI, or recording buttons.
+• NEVER generate on-screen text overlays, burned-in subtitles, captions, TikTok watermarks, or like/share icons.
+• NEVER generate artificial graphics, floating arrows, emoji stickers, or yellow basket graphics.
+• In the CTA shot, the Yellow Basket must ONLY be referred to verbally while the creator naturally points downward toward the bottom-left of the frame.
+
+────────────────────────────────────────
+OUTPUT REQUIREMENTS (STRICT JSON)
+────────────────────────────────────────
+
+Output ONLY a valid JSON array of 4 objects with the following keys for each shot:
+1. type: "Hook" | "Feature" | "Demo" | "CTA"
+2. script: The exact spoken dialogue strictly in casual Tagalog / Taglish adhering to the word count limit.
+3. imagePrompt: Detailed visual prompt to generate the 9:16 reference frame photo of the host holding/using the product.
+4. videoPrompt: Detailed motion and camera prompt describing the host's natural movement, expression, gestures, and interaction with the product.
+
+Do not include markdown formatting or extra text outside the JSON array.`
+            },
             { inlineData: { data: this.cleanBase64(productB64), mimeType: 'image/png' } }
           ]
         },
@@ -174,7 +270,7 @@ export class VeoService {
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [
-            { text: `High-quality smartphone selfie photo. The host (Ref 1) is holding the product (Ref 2). ${prompt}. Real background, natural lighting, authentic social media quality, shot on iPhone 15.` },
+            { text: `High-quality smartphone selfie photo. The host (Ref 1) is holding the product (Ref 2). ${prompt}. Real background, natural lighting, authentic social media quality, vertical 9:16, shot on iPhone.` },
             { inlineData: { data: this.cleanBase64(avatarB64), mimeType: 'image/png' } },
             { inlineData: { data: this.cleanBase64(productB64), mimeType: 'image/png' } }
           ]
@@ -213,7 +309,7 @@ export class VeoService {
       return "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"; // Sample public video
     }
 
-    const finalPrompt = `Tiktok style UGC video. The Filipino person is speaking in Tagalog directly to her handheld smartphone camera. ${shot.videoPrompt}. Authentic handheld jitters, realistic skin movement, natural daylight, no artificial filters, shot like a vlog. The person looks genuinely at the lens.`;
+    const finalPrompt = `Authentic vertical 9:16 TikTok UGC video. A natural Filipino creator is speaking in casual Tagalog directly to the camera. ${shot.videoPrompt}. Realistic natural lighting, authentic handheld smartphone camera feel, organic expressions, genuine vlog style. Do not show phone frame, device borders, camera UI, subtitles, text overlays, or graphics.`;
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
     const ai = new GoogleGenAI({ apiKey });
